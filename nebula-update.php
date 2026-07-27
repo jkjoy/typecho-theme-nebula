@@ -1,24 +1,32 @@
 <?php
 
-define('__TYPECHO_ADMIN__', true);
-
-$rootDirectory = dirname(__DIR__, 3);
-if (!defined('__TYPECHO_ROOT_DIR__')) {
-    require_once $rootDirectory . '/config.inc.php';
-}
-
-\Widget\Init::alloc();
-header('Content-Type: application/json; charset=UTF-8');
-header('Cache-Control: no-store');
+$nebulaUpdateBufferLevel = ob_get_level();
+ob_start();
 
 function nebula_update_response(array $data, int $status = 200): void
 {
+    global $nebulaUpdateBufferLevel;
+
+    while (ob_get_level() > $nebulaUpdateBufferLevel) {
+        ob_end_clean();
+    }
+
     http_response_code($status);
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 try {
+    define('__TYPECHO_ADMIN__', true);
+
+    $rootDirectory = dirname(__DIR__, 3);
+    if (!defined('__TYPECHO_ROOT_DIR__')) {
+        require_once $rootDirectory . '/config.inc.php';
+    }
+
+    \Widget\Init::alloc();
     \Widget\User::alloc()->pass('administrator');
     \Widget\Security::alloc()->protect();
 

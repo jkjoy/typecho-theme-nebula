@@ -35,9 +35,18 @@
       },
       body: body.toString()
     }).then(function (response) {
-      return response.json().catch(function () {
-        throw new Error("服务器没有返回有效的更新结果。");
-      }).then(function (result) {
+      return response.text().then(function (body) {
+        var result;
+
+        try {
+          result = JSON.parse(body.replace(/^\uFEFF/, ""));
+        } catch (error) {
+          if (response.redirected && /\/admin\/login\.php(?:[?#]|$)/.test(response.url)) {
+            throw new Error("登录状态已失效，请重新登录后再检查更新。");
+          }
+          throw new Error("服务器没有返回有效的更新结果（HTTP " + response.status + "）。");
+        }
+
         if (!response.ok || !result.success) {
           throw new Error(result.message || "更新请求失败。");
         }

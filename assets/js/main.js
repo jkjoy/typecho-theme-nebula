@@ -120,6 +120,77 @@
     });
   })();
 
+  (function codeBlocks() {
+    var blocks = document.querySelectorAll(".article-content pre");
+    if (!blocks.length) return;
+
+    function languageName(pre, code) {
+      var classes = (code.className + " " + pre.className).trim();
+      var match = classes.match(/(?:lang(?:uage)?)-([^\s]+)/i);
+      var language = match ? match[1] : code.getAttribute("data-language") || pre.getAttribute("data-language");
+      return (language || "text").replace(/[_-]+/g, " ").toUpperCase();
+    }
+
+    function legacyCopy(text) {
+      var textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      var copied = document.execCommand("copy");
+      textarea.remove();
+      return copied ? Promise.resolve() : Promise.reject(new Error("copy failed"));
+    }
+
+    function copy(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+      }
+      return legacyCopy(text);
+    }
+
+    blocks.forEach(function (pre) {
+      var code = pre.querySelector("code");
+      if (!code || pre.querySelector(".code-copy")) return;
+
+      var language = languageName(pre, code);
+      var label = document.createElement("span");
+      var button = document.createElement("button");
+      var resetTimer = null;
+
+      label.className = "code-language";
+      label.textContent = language;
+      button.className = "code-copy";
+      button.type = "button";
+      button.textContent = "复制";
+      button.setAttribute("aria-label", "复制 " + language + " 代码");
+      button.title = "复制代码";
+
+      button.addEventListener("click", function () {
+        if (resetTimer) window.clearTimeout(resetTimer);
+        copy(code.textContent).then(function () {
+          button.textContent = "已复制";
+          button.classList.remove("is-error");
+          button.classList.add("is-success");
+        }).catch(function () {
+          button.textContent = "复制失败";
+          button.classList.remove("is-success");
+          button.classList.add("is-error");
+        }).finally(function () {
+          resetTimer = window.setTimeout(function () {
+            button.textContent = "复制";
+            button.classList.remove("is-success", "is-error");
+          }, 1800);
+        });
+      });
+
+      pre.appendChild(label);
+      pre.appendChild(button);
+    });
+  })();
+
   (function backToTop() {
     var button = document.getElementById("back-top");
     if (!button) return;

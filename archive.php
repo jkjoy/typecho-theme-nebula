@@ -28,7 +28,9 @@
                 </article>
             <?php endwhile; ?>
         </div>
-        <?php $this->pageNav('上一页', '下一页', 3, '…', ['wrapTag' => 'nav', 'wrapClass' => 'pager', 'itemTag' => 'span', 'textTag' => 'span', 'currentClass' => 'current']); ?>
+        <?php if (!$this->is('single')): ?>
+            <?php $this->pageNav('上一页', '下一页', 3, '…', ['wrapTag' => 'nav', 'wrapClass' => 'pager', 'itemTag' => 'span', 'textTag' => 'span', 'currentClass' => 'current']); ?>
+        <?php endif; ?>
     <?php else: ?>
         <div class="empty-state reveal"><span class="empty-mark" aria-hidden="true">✦</span><h2>没有找到内容</h2><p>换一个关键词，或返回首页继续浏览。</p><a class="btn-ghost" href="<?php $this->options->siteUrl(); ?>">返回首页</a></div>
     <?php endif; ?>

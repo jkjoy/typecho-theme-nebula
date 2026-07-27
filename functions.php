@@ -64,8 +64,8 @@ function nebula_add_update_panel($form)
     $themeUrl = rtrim((string) $options->themeUrl, '/') . '/';
     $endpoint = \Typecho\Common::url('nebula-update.php', $themeUrl);
     $endpoint = \Widget\Security::alloc()->getTokenUrl($endpoint);
-    $styleUrl = \Typecho\Common::url('assets/css/admin-update.css', $themeUrl);
-    $scriptUrl = \Typecho\Common::url('assets/js/admin-update.js', $themeUrl);
+    $styleUrl = nebula_asset_url('assets/css/admin-update.css');
+    $scriptUrl = nebula_asset_url('assets/js/admin-update.js');
     $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 
     $panel = new \Typecho\Widget\Helper\Layout('div');
@@ -85,6 +85,16 @@ function nebula_add_update_panel($form)
         '<script src="' . $escape($scriptUrl) . '"></script>'
     );
     $form->addItem($panel);
+}
+
+function nebula_asset_url($path)
+{
+    $options = \Widget\Options::alloc();
+    $themeUrl = rtrim((string) $options->themeUrl, '/') . '/';
+    $url = \Typecho\Common::url(ltrim((string) $path, '/'), $themeUrl);
+    $separator = strpos($url, '?') === false ? '?' : '&';
+
+    return $url . $separator . 'v=' . rawurlencode(nebula_theme_version());
 }
 
 function themeFields($layout)
