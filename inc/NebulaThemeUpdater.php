@@ -8,6 +8,7 @@ final class NebulaThemeUpdater
 {
     private const API_URL = 'https://api.github.com/repos/%s/releases/latest';
     private const RAW_URL = 'https://raw.githubusercontent.com/%s/%s/index.php';
+    private const TAG_ZIP_URL = 'https://github.com/%s/archive/refs/tags/%s.zip';
     private const BRANCH_ZIP_URL = 'https://github.com/%s/archive/refs/heads/%s.zip';
     private const MAX_DOWNLOAD_BYTES = 33554432;
     private const MAX_EXTRACTED_BYTES = 67108864;
@@ -99,12 +100,12 @@ final class NebulaThemeUpdater
         $releaseResponse = $this->httpGet(sprintf(self::API_URL, $this->repository));
         if ($releaseResponse['status'] === 200) {
             $release = json_decode($releaseResponse['body'], true);
-            $version = is_array($release) ? self::normalizeVersion((string) ($release['tag_name'] ?? '')) : '';
-            $downloadUrl = is_array($release) ? trim((string) ($release['zipball_url'] ?? '')) : '';
-            if ($version !== '' && filter_var($downloadUrl, FILTER_VALIDATE_URL)) {
+            $tag = is_array($release) ? trim((string) ($release['tag_name'] ?? '')) : '';
+            $version = self::normalizeVersion($tag);
+            if ($version !== '' && $tag !== '') {
                 return [
                     'version' => $version,
-                    'download_url' => $downloadUrl,
+                    'download_url' => sprintf(self::TAG_ZIP_URL, $this->repository, rawurlencode($tag)),
                     'source' => 'release',
                 ];
             }
@@ -189,7 +190,7 @@ final class NebulaThemeUpdater
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_USERAGENT => 'Nebula-Theme-Updater',
-            CURLOPT_HTTPHEADER => ['Accept: application/octet-stream'],
+            CURLOPT_HTTPHEADER => ['Accept: application/zip, application/octet-stream;q=0.9, */*;q=0.8'],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_NOPROGRESS => false,
@@ -215,6 +216,11 @@ final class NebulaThemeUpdater
         $size = @filesize($destination);
         if (!$size || $size > self::MAX_DOWNLOAD_BYTES) {
             throw new RuntimeException('主题升级包大小异常。');
+        }
+
+        $signature = @file_get_contents($destination, false, null, 0, 4);
+        if (!is_string($signature) || !in_array($signature, ["PK\x03\x04", "PK\x05\x06", "PK\x07\x08"], true)) {
+            throw new RuntimeException('GitHub 未返回有效的 ZIP 升级包。');
         }
     }
 
