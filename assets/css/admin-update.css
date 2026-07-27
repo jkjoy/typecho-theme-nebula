@@ -1,0 +1,88 @@
+.nebula-update-panel {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid #d9d9d6;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.nebula-update-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.nebula-update-head h3,
+.nebula-update-head p,
+.nebula-update-status {
+  margin: 0;
+}
+
+.nebula-update-head h3 {
+  font-size: 1rem;
+}
+
+.nebula-update-head p {
+  margin-top: 4px;
+  color: #777;
+}
+
+.nebula-update-head code {
+  font-variant-numeric: tabular-nums;
+}
+
+.nebula-update-source {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #467b96;
+  background: #e8f1f5;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.nebula-update-actions {
+  display: flex;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nebula-update-actions .btn {
+  min-height: 40px;
+  transition-property: transform;
+  transition-duration: 120ms;
+}
+
+.nebula-update-actions .btn:active {
+  transform: scale(0.96);
+}
+
+.nebula-update-actions [hidden] {
+  display: none;
+}
+
+.nebula-update-status {
+  min-height: 21px;
+  margin-top: 12px;
+  color: #777;
+}
+
+.nebula-update-status.is-success,
+.nebula-update-status.is-update {
+  color: #3c763d;
+}
+
+.nebula-update-status.is-error {
+  color: #a94442;
+}
+
+@media (max-width: 575px) {
+  .nebula-update-panel {
+    padding: 16px;
+  }
+
+  .nebula-update-actions .btn {
+    flex: 1 1 auto;
+  }
+}
