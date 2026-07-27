@@ -26,6 +26,22 @@ try {
         require_once $rootDirectory . '/config.inc.php';
     }
 
+    if (!defined('__TYPECHO_ROOT_URL__')) {
+        $scriptPath = '/' . ltrim(str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+        $themePath = '/' . trim(str_replace('\\', '/', __TYPECHO_THEME_DIR__), '/') . '/';
+        $themePosition = strpos($scriptPath, $themePath);
+        $urlPrefix = \Typecho\Request::getInstance()->getUrlPrefix();
+
+        if ($themePosition === false || !$urlPrefix) {
+            throw new RuntimeException('无法识别 Typecho 站点地址。');
+        }
+
+        $siteRootUrl = rtrim($urlPrefix, '/') . rtrim(substr($scriptPath, 0, $themePosition), '/');
+        $adminPath = '/' . trim(defined('__TYPECHO_ADMIN_DIR__') ? __TYPECHO_ADMIN_DIR__ : '/admin/', '/');
+        // Admin mode removes this suffix when Options resolves the site root URL.
+        define('__TYPECHO_ROOT_URL__', $siteRootUrl . $adminPath);
+    }
+
     \Widget\Init::alloc();
     \Widget\User::alloc()->pass('administrator');
     \Widget\Security::alloc()->protect();
