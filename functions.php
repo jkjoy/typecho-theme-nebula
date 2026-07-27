@@ -111,11 +111,58 @@ function themeFields($layout)
         null,
         null,
         _t('封面标签'),
-        _t('留空时显示文章的第一个分类。')
+        _t('仅在没有封面图片时显示；留空时使用文章的第一个分类。')
     );
 
     $layout->addItem($cover);
     $layout->addItem($coverLabel);
+}
+
+function themePostFields($layout)
+{
+    $isSticky = new \Typecho\Widget\Helper\Form\Element\Radio(
+        'isSticky',
+        ['0' => _t('否'), '1' => _t('是')],
+        '0',
+        _t('是否置顶'),
+        _t('选择“是”后文章将在首页优先显示，并将后续文章依次向后顺延。')
+    );
+    $summary = new \Typecho\Widget\Helper\Form\Element\Textarea(
+        'summary',
+        null,
+        null,
+        _t('文章摘要'),
+        _t('用于文章列表，并显示在文章详情正文之前；留空时列表自动从正文生成摘要。')
+    );
+
+    $layout->addItem($isSticky);
+    $layout->addItem($summary);
+}
+
+function themeInit($archive)
+{
+    static $stickyQueryRegistered = false;
+
+    if (!$stickyQueryRegistered && $archive->is('index')) {
+        \Widget\Archive::pluginHandle()->query = 'nebula_query_sticky_posts';
+        $stickyQueryRegistered = true;
+    }
+}
+
+function nebula_query_sticky_posts($archive, $select)
+{
+    if ($archive->is('index')) {
+        $select->join(
+            'table.fields AS nebula_sticky',
+            "table.contents.cid = nebula_sticky.cid AND nebula_sticky.name = 'isSticky' AND nebula_sticky.str_value = '1'",
+            \Typecho\Db::LEFT_JOIN
+        );
+        $select->cleanAttribute('order')
+            ->order('nebula_sticky.str_value', \Typecho\Db::SORT_DESC)
+            ->order('table.contents.created', \Typecho\Db::SORT_DESC);
+    }
+
+    \Typecho\Db::get()->fetchAll($select, [$archive, 'push']);
 }
 
 function nebula_option($name, $default = '')
@@ -189,9 +236,25 @@ function nebula_post_cover($archive)
     return ['url' => $cover, 'label' => $label ?: 'NEBULA'];
 }
 
+function nebula_raw_post_html($archive)
+{
+    $text = isset($archive->text) ? (string) $archive->text : '';
+    if ($text === '') {
+        return '';
+    }
+
+    if (strpos($text, '<!--markdown-->') === 0) {
+        return \Utils\Markdown::convert(substr($text, 15));
+    }
+
+    return $text;
+}
+
 function nebula_first_content_image($archive)
 {
-    $content = isset($archive->content) ? (string) $archive->content : '';
+    // Reading $archive->content executes content plugins. Some shortcode plugins
+    // reuse the current Archive widget and can corrupt the listing iterator.
+    $content = nebula_raw_post_html($archive);
     if ($content === '') {
         return '';
     }
@@ -223,6 +286,39 @@ function nebula_first_content_image($archive)
     }
 
     return \Typecho\Common::url($imageUrl, (string) \Widget\Options::alloc()->siteUrl);
+}
+
+function nebula_post_excerpt($archive, $length = 100, $trim = '…')
+{
+    $summary = nebula_post_summary($archive);
+    if ($summary !== '') {
+        $summary = html_entity_decode(strip_tags($summary), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $summary = trim((string) preg_replace('/\s+/u', ' ', $summary));
+
+        return \Typecho\Common::subStr($summary, 0, (int) $length, (string) $trim);
+    }
+
+    $content = nebula_raw_post_html($archive);
+    if ($content === '') {
+        return '';
+    }
+
+    [$content] = explode('<!--more-->', $content, 2);
+    $content = preg_replace('/\[(?:article|github)\b[^\]]*\]/i', '', $content);
+    $content = preg_replace('#</?(?:address|article|aside|blockquote|br|div|dl|dt|dd|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|tr|ul)\b[^>]*>#i', ' ', $content);
+    $content = html_entity_decode(strip_tags((string) $content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $content = trim((string) preg_replace('/\s+/u', ' ', $content));
+
+    return \Typecho\Common::subStr($content, 0, (int) $length, (string) $trim);
+}
+
+function nebula_post_summary($archive)
+{
+    if (!isset($archive->fields) || !isset($archive->fields->summary)) {
+        return '';
+    }
+
+    return trim((string) $archive->fields->summary);
 }
 
 function nebula_friend_links()

@@ -10,6 +10,12 @@
                 <span><?php $this->commentsNum('暂无评论', '1 条评论', '%d 条评论'); ?></span>
             </div>
         </header>
+        <?php $summary = nebula_post_summary($this); if ($summary !== ''): ?>
+            <aside class="article-summary reveal" aria-label="文章摘要" itemprop="abstract">
+                <span>摘要</span>
+                <p><?php echo nl2br(htmlspecialchars($summary, ENT_QUOTES, 'UTF-8'), false); ?></p>
+            </aside>
+        <?php endif; ?>
         <div class="article-content reveal" itemprop="articleBody"><?php $this->content(); ?></div>
         <footer class="article-footer">
             <div class="article-tags"><?php $this->tags(' ', true, '<em>暂无标签</em>'); ?></div>

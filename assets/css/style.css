@@ -299,8 +299,9 @@ html[data-theme="light"] .site-header {
 }
 
 .brand img {
+  flex: 0 1 auto;
   width: auto;
-  max-width: 180px;
+  max-width: 132px;
   height: 34px;
   object-fit: contain;
   outline: 0;
@@ -329,6 +330,7 @@ html[data-theme="light"] .site-header {
 }
 
 .brand-name {
+  min-width: 0;
   overflow: hidden;
   color: var(--text);
   text-overflow: ellipsis;
@@ -1362,6 +1364,34 @@ html.js .reveal.visible {
   margin-right: 12px;
 }
 
+.article-summary {
+  position: relative;
+  margin-bottom: 38px;
+  padding: 20px 24px 21px 28px;
+  overflow: hidden;
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  color: var(--text-soft);
+  background: linear-gradient(100deg, rgba(6, 182, 212, 0.1), rgba(124, 58, 237, 0.06) 58%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent-2);
+}
+
+.article-summary span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--accent-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.article-summary p {
+  font-size: 0.96rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  word-break: break-word;
+}
+
 .article-content {
   color: var(--text-soft);
   font-size: 1.03rem;
@@ -2091,6 +2121,10 @@ html[data-theme="light"] .site-footer {
     max-width: calc(100vw - 168px);
   }
 
+  .brand img {
+    max-width: 72px;
+  }
+
   .nav-actions {
     gap: 6px;
   }
@@ -2188,6 +2222,11 @@ html[data-theme="light"] .site-footer {
 
   .article-head {
     margin-bottom: 32px;
+  }
+
+  .article-summary {
+    margin-bottom: 30px;
+    padding: 17px 18px 18px 22px;
   }
 
   .article-content {

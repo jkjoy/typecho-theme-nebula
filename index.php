@@ -4,7 +4,7 @@
  *
  * @package Nebula
  * @author 老孙
- * @version 1.0.2
+ * @version 1.0.3
  * @link https://imsun.org
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
@@ -22,12 +22,12 @@ $this->need('header.php');
                     <article class="post-card reveal" style="--d:<?php echo min(($cardIndex % 3) * .08, .24); ?>s" itemscope itemtype="https://schema.org/BlogPosting">
                         <a class="post-cover cover-<?php echo (($cardIndex - 1) % 6) + 1; ?>" href="<?php $this->permalink(); ?>" tabindex="-1" aria-hidden="true">
                             <?php if ($cover['url']): ?><img src="<?php echo htmlspecialchars($cover['url'], ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy"><?php endif; ?>
-                            <span class="cover-label"><?php echo htmlspecialchars($cover['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php if (!$cover['url']): ?><span class="cover-label"><?php echo htmlspecialchars($cover['label'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
                         </a>
                         <div class="post-body">
                             <div class="post-meta"><time datetime="<?php $this->date('c'); ?>"><?php $this->date('Y-m-d'); ?></time><span><?php $this->commentsNum('0 评论', '1 评论', '%d 评论'); ?></span></div>
                             <h3 itemprop="headline"><a href="<?php $this->permalink(); ?>" itemprop="url"><?php $this->title(); ?></a></h3>
-                            <p class="post-excerpt"><?php $this->excerpt(100, '…'); ?></p>
+                            <p class="post-excerpt"><?php echo htmlspecialchars(nebula_post_excerpt($this), ENT_QUOTES, 'UTF-8'); ?></p>
                             <div class="post-foot"><span class="post-tags"><?php $this->tags(' ', true, ''); ?></span></div>
                         </div>
                     </article>

@@ -32,11 +32,11 @@
     <div class="container nav-inner">
         <a class="brand" href="<?php $this->options->siteUrl(); ?>" aria-label="<?php $this->options->title(); ?>首页">
             <?php if (nebula_option('logoUrl')): ?>
-                <img src="<?php echo htmlspecialchars(nebula_option('logoUrl'), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php $this->options->title(); ?>">
+                <img src="<?php echo htmlspecialchars(nebula_option('logoUrl'), ENT_QUOTES, 'UTF-8'); ?>" alt="">
             <?php else: ?>
                 <span class="brand-mark" aria-hidden="true"></span>
-                <span class="brand-name"><?php $this->options->title(); ?></span>
             <?php endif; ?>
+            <span class="brand-name grad-text"><?php $this->options->title(); ?></span>
         </a>
 
         <nav class="site-nav" id="site-nav" aria-label="主导航">
