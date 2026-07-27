@@ -1340,7 +1340,7 @@ html.js .reveal.visible {
 }
 
 .article-head h1 {
-  margin-top: 11px;
+  margin-top: 0;
   font-size: 3.35rem;
   font-weight: 820;
 }
@@ -1359,7 +1359,8 @@ html.js .reveal.visible {
 }
 
 .article-meta span + time::before,
-.article-meta time + span::before {
+.article-meta time + span::before,
+.article-meta span + span::before {
   content: "·";
   margin-right: 12px;
 }

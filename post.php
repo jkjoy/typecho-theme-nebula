@@ -2,11 +2,11 @@
 <main class="container article-shell" id="main-content">
     <article class="article" itemscope itemtype="https://schema.org/BlogPosting">
         <header class="article-head reveal">
-            <div class="article-category"><?php $this->category(' / ', true, '未分类'); ?></div>
             <h1 itemprop="headline"><?php $this->title(); ?></h1>
             <div class="article-meta">
                 <span><?php $this->author(); ?></span>
                 <time datetime="<?php $this->date('c'); ?>" itemprop="datePublished"><?php $this->date('Y-m-d'); ?></time>
+                <span class="article-category"><?php $this->category(' / ', true, '未分类'); ?></span>
                 <span><?php $this->commentsNum('暂无评论', '1 条评论', '%d 条评论'); ?></span>
             </div>
         </header>

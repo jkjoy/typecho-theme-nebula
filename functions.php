@@ -236,15 +236,48 @@ function nebula_post_cover($archive)
     return ['url' => $cover, 'label' => $label ?: 'NEBULA'];
 }
 
+function nebula_raw_post_text($archive)
+{
+    static $textCache = [];
+
+    $text = is_object($archive) ? (string) $archive->text : '';
+
+    // Listing widgets may contain an excerpt instead of the complete source.
+    // Read the stored article by cid so images after <!--more--> are available.
+    $cid = is_object($archive) ? (int) $archive->cid : 0;
+    if ($cid > 0 && array_key_exists($cid, $textCache)) {
+        return $textCache[$cid];
+    }
+    if ($cid > 0) {
+        $database = \Typecho\Db::get();
+        $row = $database->fetchRow(
+            $database->select('text')
+                ->from('table.contents')
+                ->where('cid = ?', $cid)
+                ->limit(1)
+        );
+        if (isset($row['text']) && $row['text'] !== '') {
+            $text = (string) $row['text'];
+        }
+        $textCache[$cid] = $text;
+    }
+
+    return $text;
+}
+
 function nebula_raw_post_html($archive)
 {
-    $text = isset($archive->text) ? (string) $archive->text : '';
+    $text = nebula_raw_post_text($archive);
     if ($text === '') {
         return '';
     }
 
-    if (strpos($text, '<!--markdown-->') === 0) {
-        return \Utils\Markdown::convert(substr($text, 15));
+    // Allow an UTF-8 BOM or whitespace before Typecho's Markdown marker.
+    if (preg_match('/^(?:\xEF\xBB\xBF)?\s*<!--markdown-->/i', $text, $matches)) {
+        $markdown = substr($text, strlen($matches[0]));
+        if (class_exists('\\Utils\\Markdown')) {
+            return \Utils\Markdown::convert($markdown);
+        }
     }
 
     return $text;
@@ -254,6 +287,7 @@ function nebula_first_content_image($archive)
 {
     // Reading $archive->content executes content plugins. Some shortcode plugins
     // reuse the current Archive widget and can corrupt the listing iterator.
+    $rawContent = nebula_raw_post_text($archive);
     $content = nebula_raw_post_html($archive);
     if ($content === '') {
         return '';
@@ -274,12 +308,25 @@ function nebula_first_content_image($archive)
             $images = $document->getElementsByTagName('img');
             if ($images->length > 0) {
                 $image = $images->item(0);
-                $imageUrl = trim((string) ($image->getAttribute('src') ?: $image->getAttribute('data-src')));
+                foreach (['data-src', 'data-original', 'data-lazy-src', 'src'] as $attribute) {
+                    $imageUrl = trim((string) $image->getAttribute($attribute));
+                    if ($imageUrl !== '') {
+                        break;
+                    }
+                }
             }
         }
-    } elseif (preg_match('/<img[^>]+(?:src|data-src)=["\']([^"\']+)["\']/i', $content, $matches)) {
+    } elseif (preg_match('/<img[^>]+(?:data-src|data-original|data-lazy-src|src)=["\']([^"\']+)["\']/i', $content, $matches)) {
         $imageUrl = trim($matches[1]);
     }
+
+    // This also works when a Markdown converter is unavailable or a plugin
+    // changes the rendered article content on listing pages.
+    if ($imageUrl === '' && preg_match('/!\[[^\]]*\]\(\s*<?([^>\s)]+)>?(?:\s+["\'][^"\']*["\'])?\s*\)/u', $rawContent, $matches)) {
+        $imageUrl = trim($matches[1]);
+    }
+
+    $imageUrl = html_entity_decode($imageUrl, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
     if ($imageUrl === '' || preg_match('#^(?:[a-z][a-z0-9+.-]*:|//)#i', $imageUrl)) {
         return $imageUrl;
