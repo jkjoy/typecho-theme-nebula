@@ -190,7 +190,6 @@ final class NebulaThemeUpdater
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_USERAGENT => 'Nebula-Theme-Updater',
-            CURLOPT_HTTPHEADER => ['Accept: application/zip, application/octet-stream;q=0.9, */*;q=0.8'],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_NOPROGRESS => false,

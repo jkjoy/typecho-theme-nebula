@@ -216,6 +216,10 @@ nebula/
 
 依次检查服务器是否可以访问 GitHub、PHP 是否启用 `curl`、当前后台登录状态是否有效。安装阶段还需要 `ZipArchive` 和主题目录写权限。
 
+如果从 `1.0.3` 升级时提示“下载主题升级包失败：HTTP 415”，请先用新版
+`inc/NebulaThemeUpdater.php` 覆盖主题中的同名文件，再返回主题设置页执行升级。
+这是旧版升级器请求 GitHub 压缩包时使用了已不受支持的请求头导致的，仅需手动修复一次。
+
 ## 项目地址
 
 - GitHub：https://github.com/jkjoy/typecho-theme-nebula
