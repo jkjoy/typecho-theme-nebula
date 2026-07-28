@@ -2097,6 +2097,49 @@ html[data-theme="light"] .code-copy:hover {
   -webkit-text-fill-color: transparent;
 }
 
+.sns-bar {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+}
+
+.sns-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sns-link {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--surface);
+  transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+
+.sns-link:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  transform: translateY(-3px);
+}
+
+.sns-link:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+.sns-link svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+
 .site-footer {
   padding: 27px 0;
   border-top: 1px solid var(--border);

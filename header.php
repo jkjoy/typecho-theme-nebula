@@ -39,12 +39,13 @@
             <span class="brand-name grad-text"><?php $this->options->title(); ?></span>
         </a>
 
+        <?php \Widget\Contents\Page\Rows::alloc()->to($navPages); ?>
         <nav class="site-nav" id="site-nav" aria-label="主导航">
             <a href="<?php $this->options->siteUrl(); ?>"<?php if ($this->is('index')): ?> class="active" aria-current="page"<?php endif; ?>>首页</a>
-            <a href="<?php echo htmlspecialchars(nebula_page_url('archives'), ENT_QUOTES, 'UTF-8'); ?>"<?php if ($this->is('page', 'archives')): ?> class="active" aria-current="page"<?php endif; ?>>归档</a>
-            <a href="<?php echo htmlspecialchars(nebula_page_url('tags'), ENT_QUOTES, 'UTF-8'); ?>"<?php if ($this->is('page', 'tags') || $this->is('tag')): ?> class="active" aria-current="page"<?php endif; ?>>标签</a>
-            <a href="<?php echo htmlspecialchars(nebula_page_url('links'), ENT_QUOTES, 'UTF-8'); ?>"<?php if ($this->is('page', 'links')): ?> class="active" aria-current="page"<?php endif; ?>>友链</a>
-            <a href="<?php echo htmlspecialchars(nebula_page_url('about'), ENT_QUOTES, 'UTF-8'); ?>"<?php if ($this->is('page', 'about')): ?> class="active" aria-current="page"<?php endif; ?>>关于</a>
+            <?php while ($navPages->next()): ?>
+            <?php $navActive = $this->is('page', $navPages->slug) || ($navPages->slug === 'tags' && $this->is('tag')); ?>
+            <a href="<?php echo htmlspecialchars((string) $navPages->permalink, ENT_QUOTES, 'UTF-8'); ?>"<?php if ($navActive): ?> class="active" aria-current="page"<?php endif; ?>><?php echo htmlspecialchars((string) $navPages->title, ENT_QUOTES, 'UTF-8'); ?></a>
+            <?php endwhile; ?>
         </nav>
 
         <div class="nav-actions">

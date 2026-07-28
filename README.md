@@ -97,6 +97,7 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 | Favicon 地址 | 浏览器标签页图标 URL；留空时使用主题内置图标 |
 | 友链 | Links 数据表无有效数据时使用的备用友链列表 |
 | 页脚附加文字 | 备案号、版权信息等内容，支持基础 HTML |
+| SNS 链接 | 支持 X、Telegram、WhatsApp、微信、QQ、Facebook、哔哩哔哩和 Mastodon；填写完整链接后在页脚上方显示对应图标 |
 | 统计代码 | 在页面关闭 `head` 标签前原样输出，只应填写可信脚本 |
 
 站点名称、站点地址和站点描述使用 Typecho 的全局设置，无需在主题中重复填写。
