@@ -428,18 +428,35 @@ function nebula_friend_links()
 
 function threadedComments($comments, $options)
 {
-    $commentClass = $comments->levels > 0 ? ' comment-child' : '';
+    static $commentAuthors = [];
+
+    $commentId = (int) $comments->coid;
+    $parentId = (int) $comments->parent;
+    $authorName = trim(html_entity_decode(strip_tags((string) $comments->author), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    $replyToAuthor = $parentId > 0 ? ($commentAuthors[$parentId] ?? '') : '';
+    if ($commentId > 0 && $authorName !== '') {
+        $commentAuthors[$commentId] = $authorName;
+    }
+
+    $isAuthor = (int) $comments->authorId > 0 && (int) $comments->authorId === (int) $comments->ownerId;
+    $commentClass = ($comments->levels > 0 ? ' comment-child' : '') . ($isAuthor ? ' comment-by-author' : '');
+    $replyLabel = _t('回复 %s', strip_tags((string) $comments->author));
     ?>
     <li id="li-<?php $comments->theId(); ?>" class="comment-item<?php echo $commentClass; ?>">
-        <div id="<?php $comments->theId(); ?>" class="comment-row">
-            <div class="comment-avatar"><span aria-hidden="true"><?php echo htmlspecialchars(mb_substr(strip_tags((string) $comments->author), 0, 1), ENT_QUOTES, 'UTF-8'); ?></span><?php $comments->gravatar(48, 'mp', false); ?></div>
-            <div class="comment-main">
+        <div id="<?php $comments->theId(); ?>" class="comment-entry">
+            <div class="comment-row">
+                <div class="comment-avatar">
+                    <span aria-hidden="true"><?php echo htmlspecialchars(mb_substr(strip_tags((string) $comments->author), 0, 1), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php $comments->gravatar(48, 'mp', false); ?>
+                    <span class="comment-avatar-reply"><?php $comments->reply('<span class="sr-only">' . htmlspecialchars($replyLabel, ENT_QUOTES, 'UTF-8') . '</span>'); ?></span>
+                </div>
                 <div class="comment-head">
                     <strong><?php $comments->author(); ?></strong>
                     <time datetime="<?php $comments->date('c'); ?>"><?php $comments->date('Y-m-d H:i'); ?></time>
                 </div>
-                <div class="comment-content"><?php $comments->content(); ?></div>
-                <div class="comment-actions"><?php $comments->reply(_t('回复')); ?></div>
+            </div>
+            <div class="comment-main">
+                <div class="comment-content"><?php if ($replyToAuthor !== ''): ?><span class="comment-reply-to">@<?php echo htmlspecialchars($replyToAuthor, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?><?php $comments->content(); ?></div>
             </div>
         </div>
         <?php if ($comments->children): ?>
