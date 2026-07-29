@@ -10,9 +10,9 @@ $this->need('header.php');
 ?>
 <main class="container article-shell page-article" id="main-content">
     <article class="article" itemscope itemtype="https://schema.org/Article">
-        <header class="article-head reveal">
+        <header class="page-head reveal">
             <p class="page-kicker">PAGE</p>
-            <h1 itemprop="headline"><?php $this->title(); ?></h1>
+            <h1 class="grad-text" itemprop="headline"><?php $this->title(); ?></h1>
         </header>
         <div class="article-content reveal" itemprop="articleBody"><?php $this->content(); ?></div>
     </article>

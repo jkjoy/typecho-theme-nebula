@@ -776,6 +776,46 @@ html.js .reveal.visible {
   white-space: nowrap;
 }
 
+.post-cover img + .cover-label {
+  display: none;
+}
+
+.post-sticky-badge {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  height: 28px;
+  padding-inline: 9px 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #fff;
+  background: linear-gradient(rgba(7, 11, 20, 0.72), rgba(7, 11, 20, 0.72)) padding-box, var(--grad) border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  backdrop-filter: blur(10px) saturate(1.15);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.post-sticky-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a78bfa, #22d3ee);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.58);
+}
+
 .post-body {
   display: flex;
   min-width: 0;
@@ -1333,6 +1373,10 @@ html.js .reveal.visible {
   min-height: calc(100vh - var(--nav-h) - 120px);
   padding-top: 68px;
   padding-bottom: 90px;
+}
+
+.article-shell.page-article {
+  padding-top: 36px;
 }
 
 .article-head {
@@ -2398,6 +2442,10 @@ html[data-theme="light"] .site-footer {
   .article-shell {
     padding-top: 48px;
     padding-bottom: 72px;
+  }
+
+  .article-shell.page-article {
+    padding-top: 20px;
   }
 
   .article-head {

@@ -182,7 +182,7 @@ function themeInit($archive)
 {
     static $stickyQueryRegistered = false;
 
-    if (!$stickyQueryRegistered && $archive->is('index')) {
+    if (!$stickyQueryRegistered && ($archive->is('index') || $archive->is('category'))) {
         \Widget\Archive::pluginHandle()->query = 'nebula_query_sticky_posts';
         $stickyQueryRegistered = true;
     }
@@ -190,7 +190,7 @@ function themeInit($archive)
 
 function nebula_query_sticky_posts($archive, $select)
 {
-    if ($archive->is('index')) {
+    if ($archive->is('index') || $archive->is('category')) {
         $select->join(
             'table.fields AS nebula_sticky',
             "table.contents.cid = nebula_sticky.cid AND nebula_sticky.name = 'isSticky' AND nebula_sticky.str_value = '1'",
@@ -253,6 +253,13 @@ function nebula_post_cover($archive)
     }
 
     return ['url' => $cover, 'label' => $label ?: 'NEBULA'];
+}
+
+function nebula_post_is_sticky($archive)
+{
+    return isset($archive->fields)
+        && isset($archive->fields->isSticky)
+        && (string) $archive->fields->isSticky === '1';
 }
 
 function nebula_raw_post_text($archive)

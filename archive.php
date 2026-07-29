@@ -13,11 +13,12 @@
 
     <?php if ($this->have()): ?>
         <div class="post-grid list-grid">
-            <?php $cardIndex = 0; while ($this->next()): $cover = nebula_post_cover($this); $cardIndex++; ?>
+            <?php $cardIndex = 0; while ($this->next()): $cover = nebula_post_cover($this); $isSticky = nebula_post_is_sticky($this); $cardIndex++; ?>
                 <article class="post-card reveal" itemscope itemtype="https://schema.org/BlogPosting">
                     <a class="post-cover cover-<?php echo (($cardIndex - 1) % 6) + 1; ?>" href="<?php $this->permalink(); ?>" tabindex="-1" aria-hidden="true">
                         <?php if ($cover['url']): ?><img src="<?php echo htmlspecialchars($cover['url'], ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy"><?php endif; ?>
-                        <?php if (!$cover['url']): ?><span class="cover-label"><?php echo htmlspecialchars($cover['label'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                        <span class="cover-label"><?php echo htmlspecialchars($cover['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <?php if ($isSticky): ?><span class="post-sticky-badge">置顶</span><?php endif; ?>
                     </a>
                     <div class="post-body">
                         <div class="post-meta"><time datetime="<?php $this->date('c'); ?>"><?php $this->date('Y-m-d'); ?></time><span><?php $this->commentsNum('0 评论', '1 评论', '%d 评论'); ?></span></div>
