@@ -18,6 +18,7 @@
   var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var controller = null;
   var requestId = 0;
+  var totalCount = null;
   var gallery = [];
   var galleryIndex = 0;
 
@@ -29,6 +30,62 @@
     } catch (error) {
       return "";
     }
+  }
+
+  function linkifyText(container) {
+    var urlPattern = /https?:\/\/[^\s<>"'「」『』“”]+/gi;
+    var trailingPattern = /[.,!?;:，。！？；：)\]}>）】》]+$/;
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    var nodes = [];
+    var node;
+
+    while ((node = walker.nextNode())) {
+      if (!node.parentElement || node.parentElement.closest("a, code, pre")) continue;
+      urlPattern.lastIndex = 0;
+      if (urlPattern.test(node.nodeValue)) nodes.push(node);
+    }
+
+    nodes.forEach(function (textNode) {
+      var text = textNode.nodeValue;
+      var fragment = document.createDocumentFragment();
+      var cursor = 0;
+      var match;
+      urlPattern.lastIndex = 0;
+
+      while ((match = urlPattern.exec(text))) {
+        var raw = match[0];
+        var linkText = raw;
+        var trailing = "";
+        var nextCharacter = text.charAt(urlPattern.lastIndex);
+
+        if (/From$/i.test(linkText) && /[「『“]/.test(nextCharacter)) {
+          linkText = linkText.slice(0, -4);
+          trailing = raw.slice(-4);
+        }
+        var punctuation = linkText.match(trailingPattern);
+        if (punctuation) {
+          linkText = linkText.slice(0, -punctuation[0].length);
+          trailing = punctuation[0] + trailing;
+        }
+
+        var href = safeUrl(linkText);
+        if (!href) continue;
+        fragment.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+        var link = document.createElement("a");
+        link.href = href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer nofollow";
+        link.textContent = linkText;
+        fragment.appendChild(link);
+        if (trailing) fragment.appendChild(document.createTextNode(trailing));
+        cursor = match.index + raw.length;
+      }
+
+      if (cursor) {
+        fragment.appendChild(document.createTextNode(text.slice(cursor)));
+        textNode.replaceWith(fragment);
+      }
+    });
   }
 
   function sanitizeContent(value) {
@@ -64,6 +121,7 @@
     Array.from(source.body.childNodes).forEach(function (node) {
       output.appendChild(node.cloneNode(true));
     });
+    linkifyText(output);
     return output;
   }
 
@@ -74,9 +132,34 @@
     if (!raw || Number.isNaN(date.getTime())) {
       return { date: "此刻", clock: "", datetime: "", title: raw || "时间未知" };
     }
+    var now = new Date();
+    var elapsed = now.getTime() - date.getTime();
+    var dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var calendarDays = Math.round((dayStart.getTime() - dateStart.getTime()) / 86400000);
+    var label = "";
+    var detail = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+
+    if (elapsed >= -300000 && elapsed < 60000) {
+      label = "刚刚";
+    } else if (elapsed >= 0 && elapsed < 3600000) {
+      label = Math.floor(elapsed / 60000) + " 分钟前";
+    } else if (elapsed >= 0 && elapsed < 86400000) {
+      label = Math.floor(elapsed / 3600000) + " 小时前";
+    } else if (calendarDays === 1) {
+      label = "昨天";
+    } else if (calendarDays > 1 && calendarDays < 7) {
+      label = calendarDays + " 天前";
+    } else if (date.getFullYear() === now.getFullYear()) {
+      label = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
+    } else {
+      label = String(date.getFullYear());
+      detail = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
+    }
+
     return {
-      date: new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(date).replace("/", "."),
-      clock: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date),
+      date: label,
+      clock: detail,
       datetime: normalized,
       title: new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
     };
@@ -269,6 +352,43 @@
     }
   }
 
+  function showTotalCount() {
+    status.textContent = totalCount === null ? "正在统计动态..." : "共 " + totalCount + " 条动态";
+  }
+
+  function countMemos() {
+    var countLimit = 100;
+    var page = 1;
+    var count = 0;
+
+    function loadCountPage() {
+      var url = new URL(endpoint, window.location.origin);
+      url.searchParams.set("limit", String(countLimit));
+      url.searchParams.set("page", String(page));
+
+      return fetch(url.href, { headers: { Accept: "application/json" }, credentials: "same-origin" }).then(function (response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      }).then(function (data) {
+        if (!Array.isArray(data)) throw new Error("INVALID_RESPONSE");
+        count += data.filter(function (memo) {
+          return memo && (!memo.status || String(memo.status).toLowerCase() === "public");
+        }).length;
+        if (data.length === countLimit) {
+          page += 1;
+          return loadCountPage();
+        }
+        totalCount = count;
+        showTotalCount();
+      });
+    }
+
+    showTotalCount();
+    loadCountPage().catch(function () {
+      status.textContent = "总数暂不可用";
+    });
+  }
+
   function loadPage(page, updateHistory) {
     if (controller) controller.abort();
     controller = "AbortController" in window ? new AbortController() : null;
@@ -277,7 +397,7 @@
     currentPage = Math.max(1, page);
     if (updateHistory) setQueryPage(currentPage, false);
     setLoading(true);
-    status.textContent = "正在接收第 " + currentPage + " 页...";
+    showTotalCount();
     pager.hidden = true;
 
     var url = new URL(endpoint, window.location.origin);
@@ -299,7 +419,7 @@
       list.replaceChildren(fragment);
       if (!publicMemos.length) renderMessage("这一页很安静", currentPage > 1 ? "没有更多说说了，可以返回上一页。" : "新的念头出现后，会在这里与你见面。", false);
 
-      status.textContent = "第 " + currentPage + " 页 · " + publicMemos.length + " 条动态";
+      showTotalCount();
       pageLabel.textContent = "第 " + currentPage + " 页";
       prevButton.disabled = currentPage <= 1;
       nextButton.disabled = data.length < limit;
@@ -346,5 +466,6 @@
   }
 
   setQueryPage(currentPage, true);
+  countMemos();
   loadPage(currentPage, false);
 })();

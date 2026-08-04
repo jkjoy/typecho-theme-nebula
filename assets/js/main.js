@@ -102,7 +102,7 @@
         entry.target.classList.add("visible");
         observer.unobserve(entry.target);
       });
-    }, { threshold: 0.08, rootMargin: "0px 0px -24px" });
+    }, { threshold: 0, rootMargin: "0px 0px -24px" });
 
     elements.forEach(function (element) {
       observer.observe(element);
