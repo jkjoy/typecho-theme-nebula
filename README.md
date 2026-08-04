@@ -76,6 +76,7 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 | 分类目录 | 分类 | `categories` |
 | 标签云 | 标签 | `tags` |
 | 友情链接 | 友链 | `links` |
+| 说说动态 | 说说 | `memos` |
 | 关于页面 | 关于 | `about` |
 
 操作步骤：
@@ -194,6 +195,7 @@ nebula/
 |-- page-archives.php        # 时间线归档
 |-- page-categories.php      # 分类目录
 |-- page-links.php           # 友情链接
+|-- page-memos.php           # 接口驱动的说说动态
 |-- page-tags.php            # 标签云
 |-- post.php                 # 文章详情
 `-- screenshot.png           # Typecho 主题预览图
@@ -203,7 +205,7 @@ nebula/
 
 ### 独立页面打开后没有使用专用布局
 
-检查页面缩略名是否严格使用 `archives`、`categories`、`tags` 或 `links`，不要填写中文缩略名。
+检查页面缩略名是否严格使用 `archives`、`categories`、`tags`、`links` 或 `memos`，不要填写中文缩略名。说说页会从 `/api/v1/memos` 读取公开动态，每页默认加载 20 条。
 
 ### 文章列表没有封面图片
 

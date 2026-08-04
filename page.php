@@ -1,7 +1,7 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 $slug = (string) $this->slug;
-$special = ['archives', 'categories', 'tags', 'links'];
+$special = ['archives', 'categories', 'tags', 'links', 'memos'];
 if (in_array($slug, $special, true)) {
     $this->need('page-' . $slug . '.php');
     return;
