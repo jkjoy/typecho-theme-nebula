@@ -19,6 +19,24 @@
     <?php else: ?>
         <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x2='1' y2='1'%3E%3Cstop stop-color='%237c3aed'/%3E%3Cstop offset='.55' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%23f472b6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M32 2c2 13 6 20 12 24s12 5 18 6c-6 1-12 2-18 6S34 49 32 62c-2-13-6-20-12-24S8 33 2 32c6-1 12-2 18-6S30 15 32 2z'/%3E%3C/svg%3E">
     <?php endif; ?>
+    <?php
+    $mastodonUrl = nebula_option('snsMastodon');
+    $mastodonHandle = '';
+    $mastodonUrlIsValid = $mastodonUrl !== '' && filter_var($mastodonUrl, FILTER_VALIDATE_URL) && preg_match('#^https?://#i', $mastodonUrl);
+    if ($mastodonUrlIsValid) {
+        $mastodonHost = (string) parse_url($mastodonUrl, PHP_URL_HOST);
+        $mastodonPath = (string) parse_url($mastodonUrl, PHP_URL_PATH);
+        if ($mastodonHost !== '' && preg_match('#^/@?([a-z0-9_]+)/?$#i', $mastodonPath, $mastodonMatches)) {
+            $mastodonHandle = '@' . $mastodonMatches[1] . '@' . $mastodonHost;
+        }
+    }
+    ?>
+    <?php if ($mastodonUrlIsValid): ?>
+        <link rel="me" href="<?php echo htmlspecialchars($mastodonUrl, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
+    <?php if ($mastodonHandle !== ''): ?>
+        <meta name="fediverse:creator" content="<?php echo htmlspecialchars($mastodonHandle, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars(nebula_asset_url('assets/css/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <?php $this->header('generator=&template=&pingback=&xmlrpc=&wlw='); ?>
     <?php if (nebula_option('analyticsCode')) echo nebula_option('analyticsCode'); ?>
