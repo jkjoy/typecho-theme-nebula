@@ -128,17 +128,28 @@
   function timeParts(value) {
     var raw = typeof value === "string" ? value.trim() : "";
     var normalized = raw.replace(" ", "T");
+    // Treat timezone-less API timestamps as UTC before displaying Beijing time.
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)) normalized += "Z";
     var date = new Date(normalized);
     if (!raw || Number.isNaN(date.getTime())) {
       return { date: "此刻", clock: "", datetime: "", title: raw || "时间未知" };
     }
     var now = new Date();
     var elapsed = now.getTime() - date.getTime();
-    var dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    var calendarDays = Math.round((dayStart.getTime() - dateStart.getTime()) / 86400000);
+    var timeZone = "Asia/Shanghai";
+    var calendarFormat = new Intl.DateTimeFormat("en-US", { timeZone: timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    function calendarParts(value) {
+      var parts = {};
+      calendarFormat.formatToParts(value).forEach(function (part) { parts[part.type] = part.value; });
+      return parts;
+    }
+    var today = calendarParts(now);
+    var posted = calendarParts(date);
+    var dayStart = Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day));
+    var dateStart = Date.UTC(Number(posted.year), Number(posted.month) - 1, Number(posted.day));
+    var calendarDays = Math.round((dayStart - dateStart) / 86400000);
     var label = "";
-    var detail = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+    var detail = new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
 
     if (elapsed >= -300000 && elapsed < 60000) {
       label = "刚刚";
@@ -150,18 +161,18 @@
       label = "昨天";
     } else if (calendarDays > 1 && calendarDays < 7) {
       label = calendarDays + " 天前";
-    } else if (date.getFullYear() === now.getFullYear()) {
-      label = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
+    } else if (posted.year === today.year) {
+      label = new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
     } else {
-      label = String(date.getFullYear());
-      detail = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
+      label = posted.year;
+      detail = new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
     }
 
     return {
       date: label,
       clock: detail,
-      datetime: normalized,
-      title: new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
+      datetime: date.toISOString(),
+      title: new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
     };
   }
 
