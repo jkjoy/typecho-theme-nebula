@@ -3,6 +3,7 @@
 
   var root = document.documentElement;
   var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var revealObserver = null;
   root.classList.add("js");
 
   (function themeToggle() {
@@ -85,7 +86,7 @@
     });
   })();
 
-  (function revealContent() {
+  function revealContent() {
     var elements = document.querySelectorAll(".reveal");
     if (!elements.length) return;
 
@@ -103,13 +104,14 @@
         observer.unobserve(entry.target);
       });
     }, { threshold: 0, rootMargin: "0px 0px -24px" });
+    revealObserver = observer;
 
     elements.forEach(function (element) {
-      observer.observe(element);
+      revealObserver.observe(element);
     });
-  })();
+  }
 
-  (function imageFallbacks() {
+  function imageFallbacks() {
     document.querySelectorAll(".post-cover img, .comment-avatar img").forEach(function (image) {
       function removeBrokenImage() {
         image.remove();
@@ -118,9 +120,9 @@
       image.addEventListener("error", removeBrokenImage, { once: true });
       if (image.complete && image.naturalWidth === 0) removeBrokenImage();
     });
-  })();
+  }
 
-  (function codeBlocks() {
+  function codeBlocks() {
     var blocks = document.querySelectorAll(".article-content pre");
     if (!blocks.length) return;
 
@@ -189,7 +191,7 @@
       pre.appendChild(label);
       pre.appendChild(button);
     });
-  })();
+  }
 
   (function backToTop() {
     var button = document.getElementById("back-top");
@@ -339,4 +341,95 @@
       }
     });
   })();
+
+  function closePersistentUi() {
+    var menuButton = document.getElementById("menu-toggle");
+    var searchButton = document.getElementById("search-toggle");
+    var searchPanel = document.getElementById("search-panel");
+    document.body.classList.remove("nav-open");
+    if (menuButton) {
+      menuButton.setAttribute("aria-expanded", "false");
+      menuButton.setAttribute("aria-label", "打开菜单");
+    }
+    if (searchButton) {
+      searchButton.setAttribute("aria-expanded", "false");
+      searchButton.setAttribute("aria-label", "打开搜索");
+    }
+    if (searchPanel) {
+      searchPanel.classList.remove("is-open");
+      searchPanel.hidden = true;
+    }
+  }
+
+  function normalizedPath(value) {
+    var path = new URL(value, window.location.origin).pathname.replace(/\/+$/, "");
+    return path || "/";
+  }
+
+  function updateNavigation() {
+    var locationUrl = new URL(window.location.href);
+    var currentPath = normalizedPath(locationUrl.href);
+    var isSearch = locationUrl.searchParams.has("s");
+    document.querySelectorAll("#site-nav a[href]").forEach(function (link) {
+      var linkPath = normalizedPath(link.href);
+      var isTagArchive = link.dataset.navSlug === "tags" && /\/tag(?:\/|$)/.test(currentPath);
+      var active = !isSearch && (currentPath === linkPath || isTagArchive);
+      link.classList.toggle("active", active);
+      if (active) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    });
+  }
+
+  function unmountPage() {
+    if (revealObserver) {
+      revealObserver.disconnect();
+      revealObserver = null;
+    }
+    if (window.NebulaMemos) window.NebulaMemos.unmount();
+  }
+
+  function mountPage(focusMain) {
+    revealContent();
+    imageFallbacks();
+    codeBlocks();
+    if (window.NebulaMemos) window.NebulaMemos.mount();
+    updateNavigation();
+
+    var main = document.getElementById("main-content");
+    if (focusMain && main) {
+      main.setAttribute("tabindex", "-1");
+      main.focus({ preventScroll: true });
+      window.setTimeout(function () { main.removeAttribute("tabindex"); }, 0);
+    }
+  }
+
+  mountPage(false);
+
+  if (typeof window.Swup === "function") {
+    var swup = new window.Swup({
+      containers: ["#main-content"],
+      animationSelector: "#main-content",
+      linkSelector: ".site-header a[href], #main-content a[href]",
+      ignoreVisit: function (url, context) {
+        var link = context && context.el;
+        var path = new URL(url, window.location.origin).pathname;
+        if (link && link.closest("[data-no-swup]")) return true;
+        if (/\/(?:admin|action)(?:\/|$)/i.test(path)) return true;
+        return /\.(?:avif|gif|jpe?g|png|svg|webp|pdf|zip|rar|7z|tar|gz|mp3|mp4|ogg|webm|xml)$/i.test(path);
+      },
+      skipPopStateHandling: function (event) {
+        if (window.NebulaMemos && window.NebulaMemos.handlesPopState()) return true;
+        return !event.state || event.state.source !== "swup";
+      }
+    });
+
+    swup.hooks.on("visit:start", closePersistentUi);
+    swup.hooks.before("content:replace", unmountPage);
+    swup.hooks.on("page:view", function () {
+      mountPage(true);
+      window.dispatchEvent(new CustomEvent("nebula:page-view", {
+        detail: { url: window.location.href, title: document.title }
+      }));
+    });
+  }
 })();

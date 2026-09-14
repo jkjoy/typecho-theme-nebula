@@ -38,14 +38,13 @@ $this->need('header.php');
             <button class="btn-ghost" type="button" data-memos-next>下一页</button>
         </nav>
     </section>
+
+    <dialog class="memo-lightbox" data-memo-lightbox aria-label="图片预览">
+        <button class="memo-lightbox-close" type="button" data-lightbox-close aria-label="关闭图片预览">&times;</button>
+        <button class="memo-lightbox-nav memo-lightbox-prev" type="button" data-lightbox-prev aria-label="上一张图片">&#8249;</button>
+        <figure><img data-lightbox-image src="" alt=""><figcaption data-lightbox-caption></figcaption></figure>
+        <button class="memo-lightbox-nav memo-lightbox-next" type="button" data-lightbox-next aria-label="下一张图片">&#8250;</button>
+    </dialog>
 </main>
 
-<dialog class="memo-lightbox" data-memo-lightbox aria-label="图片预览">
-    <button class="memo-lightbox-close" type="button" data-lightbox-close aria-label="关闭图片预览">&times;</button>
-    <button class="memo-lightbox-nav memo-lightbox-prev" type="button" data-lightbox-prev aria-label="上一张图片">&#8249;</button>
-    <figure><img data-lightbox-image src="" alt=""><figcaption data-lightbox-caption></figcaption></figure>
-    <button class="memo-lightbox-nav memo-lightbox-next" type="button" data-lightbox-next aria-label="下一张图片">&#8250;</button>
-</dialog>
-
-<script src="<?php echo htmlspecialchars(nebula_asset_url('assets/js/memos.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <?php $this->need('footer.php'); ?>

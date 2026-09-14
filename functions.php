@@ -126,11 +126,15 @@ function nebula_add_update_panel($form)
     $form->addItem($panel);
 }
 
-function nebula_asset_url($path)
+function nebula_asset_url($path, $versioned = true)
 {
     $options = \Widget\Options::alloc();
     $themeUrl = rtrim((string) $options->themeUrl, '/') . '/';
     $url = \Typecho\Common::url(ltrim((string) $path, '/'), $themeUrl);
+    if (!$versioned) {
+        return $url;
+    }
+
     $separator = strpos($url, '?') === false ? '?' : '&';
 
     return $url . $separator . 'v=' . rawurlencode(nebula_theme_version());

@@ -16,6 +16,7 @@ Nebula 是一款面向 Typecho 的响应式博客主题，采用深空、星云�
 - macOS 风格代码块、语言标识、代码复制和长代码换行
 - 长链接与连续字符串自动换行，避免内容超出容器
 - 页脚 RSS 订阅、附加文字和自定义统计代码
+- Swup 局部页面导航，切换内容时保持字体、导航和动态背景常驻
 - 静态资源自动追加主题版本号，便于刷新 CDN 缓存
 - GitHub Release 在线检查与主题目录覆盖升级
 
@@ -27,7 +28,7 @@ Nebula 是一款面向 Typecho 的响应式博客主题，采用深空、星云�
 | 服务端 | PHP 8.0+，Typecho 数据库抽象层 |
 | 页面结构 | 语义化 HTML5、Schema.org 文章标记 |
 | 样式 | 原生 CSS、CSS Variables、Grid、Flexbox、媒体查询 |
-| 前端交互 | 原生 JavaScript，无 jQuery 和前端框架依赖 |
+| 前端交互 | 原生 JavaScript、Swup，无 jQuery 和前端框架依赖 |
 | 动效 | Canvas 2D 星空、IntersectionObserver、CSS Transition |
 | 内容处理 | DOMDocument 或正则提取文章正文首图 |
 | 在线更新 | GitHub REST API、cURL、ZipArchive |
@@ -181,7 +182,8 @@ assets/js/main.js?v=1.0.2
 nebula/
 |-- assets/
 |   |-- css/                 # 前台与更新面板样式
-|   `-- js/                  # 前台交互与更新面板逻辑
+|   |-- js/                  # 前台交互与更新面板逻辑
+|   `-- vendor/              # Swup 等本地第三方资源及许可证
 |-- inc/
 |   `-- NebulaThemeUpdater.php
 |-- archive.php              # 搜索、分类、标签等归档列表

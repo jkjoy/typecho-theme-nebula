@@ -1,7 +1,10 @@
 /* Alimama FangYuanTi, Copyright Taobao (China) Software Co., Ltd. */
 @font-face {
   font-family: "Alimama FangYuanTi VF";
-  src: url("../fonts/AlimamaFangYuanTiVF.woff2") format("woff2");
+  src:
+    local("Alimama FangYuanTi VF"),
+    local("阿里妈妈方圆体 VF"),
+    url("../fonts/AlimamaFangYuanTiVF.woff2") format("woff2");
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
@@ -76,6 +79,21 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html.is-changing #main-content {
+  transition-property: opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease-out;
+}
+
+html.is-animating #main-content {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+#main-content:focus {
+  outline: none;
 }
 
 body {
@@ -3099,6 +3117,14 @@ html[data-theme="light"] .site-footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html.is-changing #main-content {
+    transition-duration: 0ms;
+  }
+
+  html.is-animating #main-content {
+    transform: none;
+  }
+
   html {
     scroll-behavior: auto;
   }

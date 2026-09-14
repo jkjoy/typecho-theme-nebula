@@ -1,8 +1,20 @@
 (function () {
   "use strict";
 
-  var root = document.querySelector("[data-memos-endpoint]");
-  if (!root || !window.fetch) return;
+  var active = null;
+
+  function unmount() {
+    if (active) active.unmount();
+  }
+
+  function handlesPopState() {
+    return !!active && active.handlesPopState();
+  }
+
+  function mount() {
+    unmount();
+    var root = document.querySelector("[data-memos-endpoint]");
+    if (!root || !window.fetch) return;
 
   var list = root.querySelector("[data-memos-list]");
   var status = root.querySelector("[data-memos-status]");
@@ -15,8 +27,11 @@
   var limit = Math.min(100, Math.max(1, parseInt(root.dataset.memosLimit, 10) || 20));
   var query = new URLSearchParams(window.location.search);
   var currentPage = Math.max(1, parseInt(query.get("memo-page"), 10) || 1);
+  var pagePath = window.location.pathname;
   var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var mounted = true;
   var controller = null;
+  var countController = null;
   var requestId = 0;
   var totalCount = null;
   var gallery = [];
@@ -348,9 +363,10 @@
 
   function setQueryPage(page, replace) {
     var url = new URL(window.location.href);
+    var state = Object.assign({}, window.history.state, { memoPage: page, nebulaMemos: true });
     if (page === 1) url.searchParams.delete("memo-page");
     else url.searchParams.set("memo-page", String(page));
-    window.history[replace ? "replaceState" : "pushState"]({ memoPage: page }, "", url);
+    window.history[replace ? "replaceState" : "pushState"](state, "", url);
   }
 
   function setLoading(loading) {
@@ -371,16 +387,20 @@
     var countLimit = 100;
     var page = 1;
     var count = 0;
+    countController = "AbortController" in window ? new AbortController() : null;
 
     function loadCountPage() {
       var url = new URL(endpoint, window.location.origin);
       url.searchParams.set("limit", String(countLimit));
       url.searchParams.set("page", String(page));
 
-      return fetch(url.href, { headers: { Accept: "application/json" }, credentials: "same-origin" }).then(function (response) {
+      var options = { headers: { Accept: "application/json" }, credentials: "same-origin" };
+      if (countController) options.signal = countController.signal;
+      return fetch(url.href, options).then(function (response) {
         if (!response.ok) throw new Error("HTTP " + response.status);
         return response.json();
       }).then(function (data) {
+        if (!mounted) return;
         if (!Array.isArray(data)) throw new Error("INVALID_RESPONSE");
         count += data.filter(function (memo) {
           return memo && (!memo.status || String(memo.status).toLowerCase() === "public");
@@ -395,7 +415,8 @@
     }
 
     showTotalCount();
-    loadCountPage().catch(function () {
+    loadCountPage().catch(function (error) {
+      if (!mounted || (error && error.name === "AbortError")) return;
       status.textContent = "总数暂不可用";
     });
   }
@@ -421,6 +442,7 @@
       if (!response.ok) throw new Error("HTTP " + response.status);
       return response.json();
     }).then(function (data) {
+      if (!mounted || activeRequest !== requestId) return;
       if (!Array.isArray(data)) throw new Error("INVALID_RESPONSE");
       var publicMemos = data.filter(function (memo) {
         return memo && (!memo.status || String(memo.status).toLowerCase() === "public");
@@ -436,7 +458,7 @@
       nextButton.disabled = data.length < limit;
       pager.hidden = currentPage === 1 && data.length < limit;
     }).catch(function (error) {
-      if (error && error.name === "AbortError") return;
+      if (!mounted || (error && error.name === "AbortError")) return;
       renderMessage("暂时无法读取说说", "请检查网络连接或接口 /api/v1/memos 是否可用。", true);
       status.textContent = "加载失败";
       pageLabel.textContent = "第 " + currentPage + " 页";
@@ -444,39 +466,83 @@
       nextButton.disabled = true;
       pager.hidden = currentPage <= 1;
     }).finally(function () {
-      if (activeRequest !== requestId) return;
+      if (!mounted || activeRequest !== requestId) return;
       setLoading(false);
     });
   }
 
-  prevButton.addEventListener("click", function () {
+  function previousPage() {
     if (currentPage <= 1) return;
     loadPage(currentPage - 1, true);
     root.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-  });
-  nextButton.addEventListener("click", function () {
-    loadPage(currentPage + 1, true);
-    root.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-  });
-  window.addEventListener("popstate", function () {
-    var params = new URLSearchParams(window.location.search);
-    loadPage(Math.max(1, parseInt(params.get("memo-page"), 10) || 1), false);
-  });
-
-  if (lightbox) {
-    lightbox.querySelector("[data-lightbox-close]").addEventListener("click", function () { lightbox.close(); });
-    lightbox.querySelector("[data-lightbox-prev]").addEventListener("click", function () { moveLightbox(-1); });
-    lightbox.querySelector("[data-lightbox-next]").addEventListener("click", function () { moveLightbox(1); });
-    lightbox.addEventListener("click", function (event) {
-      if (event.target === lightbox) lightbox.close();
-    });
-    lightbox.addEventListener("keydown", function (event) {
-      if (event.key === "ArrowLeft") moveLightbox(-1);
-      if (event.key === "ArrowRight") moveLightbox(1);
-    });
   }
 
-  setQueryPage(currentPage, true);
+  function nextPage() {
+    loadPage(currentPage + 1, true);
+    root.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+  }
+
+  function onPopState() {
+    if (!handlesCurrentPopState()) return;
+    var params = new URLSearchParams(window.location.search);
+    loadPage(Math.max(1, parseInt(params.get("memo-page"), 10) || 1), false);
+  }
+
+  function handlesCurrentPopState() {
+    return mounted && window.location.pathname === pagePath;
+  }
+
+  function closeLightbox() {
+    if (!lightbox || !lightbox.hasAttribute("open")) return;
+    if (typeof lightbox.close === "function") lightbox.close();
+    else lightbox.removeAttribute("open");
+  }
+
+  function previousImage() { moveLightbox(-1); }
+  function nextImage() { moveLightbox(1); }
+  function closeLightboxBackdrop(event) {
+    if (event.target === lightbox) closeLightbox();
+  }
+  function lightboxKeyboard(event) {
+    if (event.key === "ArrowLeft") moveLightbox(-1);
+    if (event.key === "ArrowRight") moveLightbox(1);
+  }
+
+  prevButton.addEventListener("click", previousPage);
+  nextButton.addEventListener("click", nextPage);
+  window.addEventListener("popstate", onPopState);
+
+  if (lightbox) {
+    lightbox.querySelector("[data-lightbox-close]").addEventListener("click", closeLightbox);
+    lightbox.querySelector("[data-lightbox-prev]").addEventListener("click", previousImage);
+    lightbox.querySelector("[data-lightbox-next]").addEventListener("click", nextImage);
+    lightbox.addEventListener("click", closeLightboxBackdrop);
+    lightbox.addEventListener("keydown", lightboxKeyboard);
+  }
+
+  active = {
+    handlesPopState: handlesCurrentPopState,
+    unmount: function () {
+      if (!mounted) return;
+      mounted = false;
+      requestId += 1;
+      if (controller) controller.abort();
+      if (countController) countController.abort();
+      window.removeEventListener("popstate", onPopState);
+      prevButton.removeEventListener("click", previousPage);
+      nextButton.removeEventListener("click", nextPage);
+      closeLightbox();
+      active = null;
+    }
+  };
+
   countMemos();
   loadPage(currentPage, false);
+  }
+
+  window.NebulaMemos = {
+    mount: mount,
+    unmount: unmount,
+    handlesPopState: handlesPopState
+  };
 })();

@@ -37,6 +37,7 @@
     <?php if ($mastodonHandle !== ''): ?>
         <meta name="fediverse:creator" content="<?php echo htmlspecialchars($mastodonHandle, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
+    <link rel="preload" href="<?php echo htmlspecialchars(nebula_asset_url('assets/fonts/AlimamaFangYuanTiVF.woff2', false), ENT_QUOTES, 'UTF-8'); ?>" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<?php echo htmlspecialchars(nebula_asset_url('assets/css/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <?php $this->header('generator=&template=&pingback=&xmlrpc=&wlw='); ?>
     <?php if (nebula_option('analyticsCode')) echo nebula_option('analyticsCode'); ?>
@@ -59,10 +60,10 @@
 
         <?php \Widget\Contents\Page\Rows::alloc()->to($navPages); ?>
         <nav class="site-nav" id="site-nav" aria-label="主导航">
-            <a href="<?php $this->options->siteUrl(); ?>"<?php if ($this->is('index')): ?> class="active" aria-current="page"<?php endif; ?>>首页</a>
+            <a href="<?php $this->options->siteUrl(); ?>" data-nav-slug="home"<?php if ($this->is('index')): ?> class="active" aria-current="page"<?php endif; ?>>首页</a>
             <?php while ($navPages->next()): ?>
             <?php $navActive = $this->is('page', $navPages->slug) || ($navPages->slug === 'tags' && $this->is('tag')); ?>
-            <a href="<?php echo htmlspecialchars((string) $navPages->permalink, ENT_QUOTES, 'UTF-8'); ?>"<?php if ($navActive): ?> class="active" aria-current="page"<?php endif; ?>><?php echo htmlspecialchars((string) $navPages->title, ENT_QUOTES, 'UTF-8'); ?></a>
+            <a href="<?php echo htmlspecialchars((string) $navPages->permalink, ENT_QUOTES, 'UTF-8'); ?>" data-nav-slug="<?php echo htmlspecialchars((string) $navPages->slug, ENT_QUOTES, 'UTF-8'); ?>"<?php if ($navActive): ?> class="active" aria-current="page"<?php endif; ?>><?php echo htmlspecialchars((string) $navPages->title, ENT_QUOTES, 'UTF-8'); ?></a>
             <?php endwhile; ?>
         </nav>
 
