@@ -19,7 +19,7 @@ $logoUrl = nebula_option('logoUrl');
     <?php if ($links): ?>
         <div class="link-grid">
             <?php foreach ($links as $index => $link): ?>
-                <a class="link-card reveal" href="<?php echo htmlspecialchars($link['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" style="--d:<?php echo min(($index % 4) * .07, .21); ?>s">
+                <a class="link-card reveal" href="<?php echo htmlspecialchars($link['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" style="--d:<?php echo ($index % 4) * .04; ?>s">
                     <span class="link-avatar av-<?php echo ($index % 6) + 1; ?>">
                         <?php if ($link['avatar']): ?><img src="<?php echo htmlspecialchars($link['avatar'], ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy"><?php else: ?><?php echo htmlspecialchars(mb_substr($link['name'], 0, 1), ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
                     </span>

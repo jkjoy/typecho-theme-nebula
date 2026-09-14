@@ -1,9 +1,20 @@
+/* Alimama FangYuanTi, Copyright Taobao (China) Software Co., Ltd. */
+@font-face {
+  font-family: "Alimama FangYuanTi VF";
+  src: url("../fonts/AlimamaFangYuanTiVF.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --bg: #070b14;
   --bg-2: #0d1322;
   --surface: rgba(255, 255, 255, 0.055);
   --surface-strong: rgba(13, 19, 34, 0.88);
   --surface-hover: rgba(255, 255, 255, 0.09);
+  --card-surface: rgba(13, 19, 34, 0.82);
+  --card-surface-hover: rgba(19, 28, 47, 0.92);
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.16);
   --text: #e8ecf4;
@@ -24,7 +35,7 @@
   --nav-h: 64px;
   --content: 1100px;
   --article: 760px;
-  --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-sans: "Alimama FangYuanTi VF", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: Consolas, "SFMono-Regular", "JetBrains Mono", monospace;
   color-scheme: dark;
 }
@@ -35,6 +46,8 @@ html[data-theme="light"] {
   --surface: rgba(255, 255, 255, 0.76);
   --surface-strong: rgba(255, 255, 255, 0.94);
   --surface-hover: rgba(255, 255, 255, 0.98);
+  --card-surface: rgba(255, 255, 255, 0.88);
+  --card-surface-hover: rgba(255, 255, 255, 0.98);
   --border: rgba(15, 23, 42, 0.1);
   --border-strong: rgba(15, 23, 42, 0.17);
   --text: #1e2436;
@@ -230,9 +243,10 @@ blockquote {
   height: 18vw;
   min-height: 160px;
   border-radius: 50%;
-  filter: blur(95px);
+  filter: blur(72px);
   transform: rotate(-18deg);
   opacity: 0.45;
+  will-change: transform;
 }
 
 .aurora span:nth-child(1) {
@@ -278,13 +292,11 @@ html[data-theme="light"] .aurora {
   top: 0;
   height: var(--nav-h);
   border-bottom: 1px solid var(--border);
-  background: rgba(7, 11, 20, 0.62);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-  backdrop-filter: blur(18px) saturate(1.35);
+  background: rgba(7, 11, 20, 0.9);
 }
 
 html[data-theme="light"] .site-header {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .nav-inner {
@@ -493,8 +505,6 @@ body.nav-open .menu-toggle span:nth-child(3) { top: 20px; transform: rotate(-45d
   padding-block: 14px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-strong);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
   opacity: 0;
   transform: translateY(-10px);
   transition-property: opacity, transform;
@@ -553,17 +563,15 @@ body.nav-open .menu-toggle span:nth-child(3) { top: 20px; transform: rotate(-45d
 
 html.js .reveal {
   opacity: 0;
-  filter: blur(4px);
-  transform: translateY(18px);
-  transition-property: opacity, filter, transform;
-  transition-duration: 520ms;
+  transform: translateY(12px);
+  transition-property: opacity, transform;
+  transition-duration: 320ms;
   transition-delay: var(--d, 0s);
   transition-timing-function: ease-out;
 }
 
 html.js .reveal.visible {
   opacity: 1;
-  filter: blur(0);
   transform: translateY(0);
 }
 
@@ -624,10 +632,8 @@ html.js .reveal.visible {
   padding: 26px 32px;
   grid-template-columns: repeat(3, 1fr);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--card-surface);
   box-shadow: var(--shadow-border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
 }
 
 .stat {
@@ -696,19 +702,17 @@ html.js .reveal.visible {
   overflow: hidden;
   flex-direction: column;
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--card-surface);
   box-shadow: var(--shadow-border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   transition-property: transform, background-color, box-shadow;
-  transition-duration: 260ms;
+  transition-duration: 180ms;
   transition-timing-function: ease-out;
 }
 
 .post-card:hover {
-  background: var(--surface-hover);
+  background: var(--card-surface-hover);
   box-shadow: var(--shadow-border), var(--shadow-card), 0 0 28px rgba(124, 58, 237, 0.18);
-  transform: translateY(-6px);
+  transform: translateY(-4px);
 }
 
 .post-cover {
@@ -737,7 +741,7 @@ html.js .reveal.visible {
   background: linear-gradient(110deg, transparent 32%, rgba(255, 255, 255, 0.16) 49%, transparent 62%);
   pointer-events: none;
   transform: translateX(-110%);
-  transition: transform 620ms ease-out;
+  transition: transform 360ms ease-out;
 }
 
 .post-card:hover .post-cover::after {
@@ -748,7 +752,7 @@ html.js .reveal.visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 520ms ease-out;
+  transition: transform 260ms ease-out;
 }
 
 .post-card:hover .post-cover img {
@@ -1289,7 +1293,7 @@ html.js .reveal.visible {
   color: #fff;
   font-size: 1.2rem;
   font-weight: 750;
-  transition: transform 420ms ease-out;
+  transition: transform 240ms ease-out;
 }
 
 .link-avatar img {
@@ -1477,15 +1481,13 @@ html.js .reveal.visible {
   min-width: 0;
   padding: 21px 22px;
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--card-surface);
   box-shadow: var(--shadow-border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   transition: background-color 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
 }
 
 .memo-card:hover {
-  background: var(--surface-hover);
+  background: var(--card-surface-hover);
   box-shadow: var(--shadow-border), 0 14px 34px rgba(0, 0, 0, 0.16), 0 0 22px rgba(6, 182, 212, 0.1);
   transform: translateY(-2px);
 }
@@ -2665,15 +2667,13 @@ html[data-theme="light"] .code-copy:hover {
   padding: 27px 0;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
-  background: rgba(7, 11, 20, 0.5);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: rgba(7, 11, 20, 0.82);
   font-size: 0.82rem;
   text-align: center;
 }
 
 html[data-theme="light"] .site-footer {
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .footer-inner {
@@ -2768,14 +2768,16 @@ html[data-theme="light"] .site-footer {
     visibility: hidden;
     border-bottom: 1px solid var(--border);
     background: var(--surface-strong);
-    -webkit-backdrop-filter: blur(18px);
-    backdrop-filter: blur(18px);
     opacity: 0;
     pointer-events: none;
     transform: translateY(-10px);
     transition-property: opacity, transform, visibility;
     transition-duration: 220ms;
     transition-timing-function: ease-out;
+  }
+
+  .aurora span {
+    animation: none;
   }
 
   body.nav-open .site-nav {

@@ -217,13 +217,16 @@
   (function starfield() {
     var canvas = document.getElementById("bg-canvas");
     if (!canvas || !canvas.getContext) return;
-    var context = canvas.getContext("2d");
+    var context = canvas.getContext("2d", { alpha: true, desynchronized: true });
     var stars = [];
     var width = 0;
     var height = 0;
     var animationFrame = 0;
+    var lastFrameTime = 0;
     var pointer = { x: 0.5, y: 0.5 };
-    var linkDistance = 128;
+    var coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    var frameInterval = 1000 / (coarsePointer ? 24 : 30);
+    var linkDistance = coarsePointer ? 104 : 120;
 
     function makeStar() {
       return {
@@ -238,18 +241,20 @@
     }
 
     function resize() {
-      var ratio = Math.min(window.devicePixelRatio || 1, 2);
+      var ratio = Math.min(window.devicePixelRatio || 1, coarsePointer ? 1 : 1.5);
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      var count = Math.min(86, Math.max(28, Math.round((width * height) / 18000)));
+      var minimum = coarsePointer ? 20 : 28;
+      var maximum = coarsePointer ? 42 : 64;
+      var count = Math.min(maximum, Math.max(minimum, Math.round((width * height) / 24000)));
       while (stars.length < count) stars.push(makeStar());
       stars.length = count;
     }
 
-    function draw(move) {
+    function draw(move, step) {
       context.clearRect(0, 0, width, height);
       var light = root.dataset.theme === "light";
       var color = light ? "30,36,54" : "232,236,244";
@@ -258,9 +263,9 @@
 
       stars.forEach(function (star) {
         if (move) {
-          star.x += star.velocityX;
-          star.y += star.velocityY;
-          star.phase += 0.018;
+          star.x += star.velocityX * step;
+          star.y += star.velocityY * step;
+          star.phase += 0.018 * step;
           if (star.x < -8) star.x = width + 8;
           if (star.x > width + 8) star.x = -8;
           if (star.y < -8) star.y = height + 8;
@@ -293,23 +298,35 @@
       }
     }
 
-    function animate() {
-      draw(true);
+    function animate(timestamp) {
       animationFrame = window.requestAnimationFrame(animate);
+      if (!lastFrameTime) {
+        lastFrameTime = timestamp;
+        draw(true, 1);
+        return;
+      }
+
+      var elapsed = timestamp - lastFrameTime;
+      if (elapsed < frameInterval) return;
+      lastFrameTime = timestamp - (elapsed % frameInterval);
+      draw(true, Math.min(elapsed / (1000 / 60), 3));
     }
 
     resize();
-    if (reducedMotion) draw(false); else animate();
+    if (reducedMotion) draw(false, 0);
+    else animationFrame = window.requestAnimationFrame(animate);
 
     window.addEventListener("resize", function () {
       resize();
-      if (reducedMotion) draw(false);
+      if (reducedMotion) draw(false, 0);
     });
 
-    window.addEventListener("pointermove", function (event) {
-      pointer.x = event.clientX / Math.max(width, 1);
-      pointer.y = event.clientY / Math.max(height, 1);
-    }, { passive: true });
+    if (!coarsePointer) {
+      window.addEventListener("pointermove", function (event) {
+        pointer.x = event.clientX / Math.max(width, 1);
+        pointer.y = event.clientY / Math.max(height, 1);
+      }, { passive: true });
+    }
 
     document.addEventListener("visibilitychange", function () {
       if (reducedMotion) return;
@@ -317,7 +334,8 @@
         window.cancelAnimationFrame(animationFrame);
         animationFrame = 0;
       } else if (!animationFrame) {
-        animate();
+        lastFrameTime = 0;
+        animationFrame = window.requestAnimationFrame(animate);
       }
     });
   })();

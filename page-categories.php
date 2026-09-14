@@ -16,7 +16,7 @@ $this->need('header.php');
     </header>
     <div class="category-grid">
         <?php $hasCategories = false; $index = 0; while ($categories->next()): $hasCategories = true; $index++; ?>
-            <a class="category-card reveal" href="<?php $categories->permalink(); ?>" style="--d:<?php echo min(($index % 4) * .07, .21); ?>s">
+            <a class="category-card reveal" href="<?php $categories->permalink(); ?>" style="--d:<?php echo (($index - 1) % 4) * .04; ?>s">
                 <span class="category-index" aria-hidden="true"><?php echo str_pad((string) $index, 2, '0', STR_PAD_LEFT); ?></span>
                 <span class="category-info"><strong><?php $categories->name(); ?></strong><small><?php echo (int) $categories->count; ?> 篇文章</small></span>
                 <span class="category-arrow" aria-hidden="true">→</span>
