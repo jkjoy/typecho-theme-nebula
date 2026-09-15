@@ -22,7 +22,7 @@
         </footer>
     </article>
 
-    <nav class="post-near" aria-label="相邻文章">
+    <nav class="post-near" aria-label="相邻文章" data-no-swup>
         <div><span>上一篇</span><?php $this->thePrev('%s', '已经是最早一篇'); ?></div>
         <div><span>下一篇</span><?php $this->theNext('%s', '已经是最新一篇'); ?></div>
     </nav>

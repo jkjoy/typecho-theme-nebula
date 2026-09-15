@@ -24,7 +24,7 @@ $stats = nebula_site_stats();
     <div class="timeline">
         <?php $year = null; $hasPosts = false; while ($archivePosts->next()): $hasPosts = true; $postYear = date('Y', (int) $archivePosts->created); ?>
             <?php if ($postYear !== $year): $year = $postYear; ?><h2 class="t-year reveal"><?php echo $year; ?></h2><?php endif; ?>
-            <a class="t-item reveal" href="<?php $archivePosts->permalink(); ?>">
+            <a class="t-item reveal" href="<?php $archivePosts->permalink(); ?>" data-no-swup>
                 <time class="t-date" datetime="<?php $archivePosts->date('c'); ?>"><?php $archivePosts->date('m-d'); ?></time>
                 <span class="t-title"><?php $archivePosts->title(); ?></span>
                 <span class="t-category"><?php $archivePosts->category(' / ', false, '未分类'); ?></span>

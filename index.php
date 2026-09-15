@@ -4,7 +4,7 @@
  *
  * @package Nebula
  * @author 老孙
- * @version 1.1.8
+ * @version 1.1.9
  * @link https://imsun.org
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
@@ -20,14 +20,14 @@ $this->need('header.php');
             <div class="post-grid">
                 <?php $cardIndex = 0; while ($this->next()): $cover = nebula_post_cover($this); $isSticky = nebula_post_is_sticky($this); $cardIndex++; ?>
                     <article class="post-card reveal" style="--d:<?php echo (($cardIndex - 1) % 3) * .06; ?>s" itemscope itemtype="https://schema.org/BlogPosting">
-                        <a class="post-cover cover-<?php echo (($cardIndex - 1) % 6) + 1; ?>" href="<?php $this->permalink(); ?>" tabindex="-1" aria-hidden="true">
+                        <a class="post-cover cover-<?php echo (($cardIndex - 1) % 6) + 1; ?>" href="<?php $this->permalink(); ?>" tabindex="-1" aria-hidden="true" data-no-swup>
                             <?php if ($cover['url']): ?><img src="<?php echo htmlspecialchars($cover['url'], ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy"><?php endif; ?>
                             <span class="cover-label"><?php echo htmlspecialchars($cover['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                             <?php if ($isSticky): ?><span class="post-sticky-badge">置顶</span><?php endif; ?>
                         </a>
                         <div class="post-body">
                             <div class="post-meta"><time datetime="<?php $this->date('c'); ?>"><?php $this->date('Y-m-d'); ?></time><span><?php $this->commentsNum('0 评论', '1 评论', '%d 评论'); ?></span></div>
-                            <h3 itemprop="headline"><a href="<?php $this->permalink(); ?>" itemprop="url"><?php $this->title(); ?></a></h3>
+                            <h3 itemprop="headline"><a href="<?php $this->permalink(); ?>" itemprop="url" data-no-swup><?php $this->title(); ?></a></h3>
                             <p class="post-excerpt"><?php echo htmlspecialchars(nebula_post_excerpt($this), ENT_QUOTES, 'UTF-8'); ?></p>
                             <div class="post-foot"><span class="post-tags"><?php $this->tags(' ', true, ''); ?></span></div>
                         </div>
