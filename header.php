@@ -37,7 +37,7 @@
     <?php if ($mastodonHandle !== ''): ?>
         <meta name="fediverse:creator" content="<?php echo htmlspecialchars($mastodonHandle, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
-    <link rel="preload" href="<?php echo htmlspecialchars(nebula_asset_url('assets/fonts/AlimamaFangYuanTiVF.woff2', false), ENT_QUOTES, 'UTF-8'); ?>" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="<?php echo htmlspecialchars(nebula_asset_url('assets/fonts/AlimamaFangYuanTiVF-Thin.woff2', false), ENT_QUOTES, 'UTF-8'); ?>" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<?php echo htmlspecialchars(nebula_asset_url('assets/css/style.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <?php $this->header('generator=&template=&pingback=&xmlrpc=&wlw='); ?>
     <?php if (nebula_option('analyticsCode')) echo nebula_option('analyticsCode'); ?>
