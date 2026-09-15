@@ -456,6 +456,89 @@ function nebula_friend_links()
     return $links;
 }
 
+function nebula_normalize_comment_mail($mail)
+{
+    return strtolower(trim((string) $mail));
+}
+
+function nebula_comment_identity_data()
+{
+    static $identityData = null;
+
+    if ($identityData !== null) {
+        return $identityData;
+    }
+
+    $identityData = [
+        'commentCounts' => [],
+        'friendMails' => [],
+    ];
+
+    try {
+        $database = \Typecho\Db::get();
+        $rows = $database->fetchAll(
+            $database->select('mail', 'COUNT(coid) AS comment_count')
+                ->from('table.comments')
+                ->where('status = ?', 'approved')
+                ->where('type = ?', 'comment')
+                ->where('mail <> ?', '')
+                ->group('mail')
+        );
+
+        foreach ($rows as $row) {
+            $mail = nebula_normalize_comment_mail($row['mail'] ?? '');
+            if ($mail !== '') {
+                $identityData['commentCounts'][$mail] =
+                    ($identityData['commentCounts'][$mail] ?? 0) + (int) ($row['comment_count'] ?? 0);
+            }
+        }
+    } catch (\Throwable $error) {
+        // Comments still render normally if the aggregate query is unavailable.
+    }
+
+    try {
+        $database = \Typecho\Db::get();
+        $rows = $database->fetchAll(
+            $database->select('email')
+                ->from('table.links')
+                ->where('state = ?', 1)
+                ->where('email <> ?', '')
+        );
+
+        foreach ($rows as $row) {
+            $mail = nebula_normalize_comment_mail($row['email'] ?? '');
+            if ($mail !== '') {
+                $identityData['friendMails'][$mail] = true;
+            }
+        }
+    } catch (\Throwable $error) {
+        // The Links plugin and its email field are optional.
+    }
+
+    return $identityData;
+}
+
+function nebula_comment_level($commentCount)
+{
+    if ($commentCount >= 50) {
+        return 5;
+    }
+
+    if ($commentCount >= 20) {
+        return 4;
+    }
+
+    if ($commentCount >= 10) {
+        return 3;
+    }
+
+    if ($commentCount >= 5) {
+        return 2;
+    }
+
+    return $commentCount > 0 ? 1 : 0;
+}
+
 function threadedComments($comments, $options)
 {
     static $commentAuthors = [];
@@ -469,19 +552,34 @@ function threadedComments($comments, $options)
     }
 
     $isAuthor = (int) $comments->authorId > 0 && (int) $comments->authorId === (int) $comments->ownerId;
+    $mail = nebula_normalize_comment_mail($comments->mail ?? '');
+    $identityData = nebula_comment_identity_data();
+    $commentCount = $mail !== '' ? (int) ($identityData['commentCounts'][$mail] ?? 0) : 0;
+    $commentLevel = $isAuthor ? 0 : nebula_comment_level($commentCount);
+    $isFriend = $mail !== '' && isset($identityData['friendMails'][$mail]);
     $commentClass = ($comments->levels > 0 ? ' comment-child' : '') . ($isAuthor ? ' comment-by-author' : '');
-    $replyLabel = _t('回复 %s', strip_tags((string) $comments->author));
+    $replyLabel = _t('点击头像回复 %s', strip_tags((string) $comments->author));
+    $replyTip = _t('点击头像回复');
     ?>
     <li id="li-<?php $comments->theId(); ?>" class="comment-item<?php echo $commentClass; ?>">
         <div id="<?php $comments->theId(); ?>" class="comment-entry">
             <div class="comment-row">
-                <div class="comment-avatar">
+                <div class="comment-avatar" data-reply-tip="<?php echo htmlspecialchars($replyTip, ENT_QUOTES, 'UTF-8'); ?>">
                     <span aria-hidden="true"><?php echo htmlspecialchars(mb_substr(strip_tags((string) $comments->author), 0, 1), ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php $comments->gravatar(48, 'mp', false); ?>
                     <span class="comment-avatar-reply"><?php $comments->reply('<span class="sr-only">' . htmlspecialchars($replyLabel, ENT_QUOTES, 'UTF-8') . '</span>'); ?></span>
                 </div>
                 <div class="comment-head">
-                    <strong><?php $comments->author(); ?></strong>
+                    <div class="comment-author-line">
+                        <strong><?php $comments->author(); ?></strong>
+                        <?php if ($isAuthor || $commentLevel > 0 || $isFriend): ?>
+                            <span class="comment-badges">
+                                <?php if ($isAuthor): ?><span class="comment-badge comment-badge-author" title="本站博主">博主</span><?php endif; ?>
+                                <?php if ($commentLevel > 0): ?><span class="comment-badge comment-badge-level comment-badge-level-<?php echo $commentLevel; ?>" title="累计 <?php echo $commentCount; ?> 条已审核评论">LV<?php echo $commentLevel; ?></span><?php endif; ?>
+                                <?php if ($isFriend): ?><span class="comment-badge comment-badge-friend" title="友情链接博友">博友</span><?php endif; ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
                     <time datetime="<?php $comments->date('c'); ?>"><?php $comments->date('Y-m-d H:i'); ?></time>
                 </div>
             </div>

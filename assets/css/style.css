@@ -2307,7 +2307,6 @@ html[data-theme="light"] .code-copy:hover {
   display: grid;
   width: 48px;
   height: 48px;
-  overflow: hidden;
   flex: 0 0 48px;
   place-items: center;
   border-radius: 50%;
@@ -2315,6 +2314,53 @@ html[data-theme="light"] .code-copy:hover {
   background: var(--grad);
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.comment-avatar[data-reply-tip]::before,
+.comment-avatar[data-reply-tip]::after {
+  position: absolute;
+  z-index: 3;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition-property: opacity, visibility, transform;
+  transition-duration: 140ms;
+  transition-timing-function: ease-out;
+}
+
+.comment-avatar[data-reply-tip]::before {
+  content: "";
+  bottom: calc(100% + 1px);
+  left: 18px;
+  border: 5px solid transparent;
+  border-top-color: var(--surface-strong);
+}
+
+.comment-avatar[data-reply-tip]::after {
+  content: attr(data-reply-tip);
+  bottom: calc(100% + 10px);
+  left: 0;
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  color: var(--text);
+  background-color: var(--surface-strong);
+  box-shadow: var(--shadow-border), 0 8px 24px rgba(0, 0, 0, 0.2);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.comment-item.comment-by-author > .comment-entry > .comment-row .comment-avatar[data-reply-tip]::before {
+  right: 18px;
+  left: auto;
+}
+
+.comment-item.comment-by-author > .comment-entry > .comment-row .comment-avatar[data-reply-tip]::after {
+  right: 0;
+  left: auto;
 }
 
 .comment-avatar img {
@@ -2352,6 +2398,15 @@ html[data-theme="light"] .code-copy:hover {
 .comment-avatar:has(.comment-avatar-reply a:hover),
 .comment-avatar:has(.comment-avatar-reply a:focus-visible) {
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.28);
+}
+
+.comment-avatar:has(.comment-avatar-reply a):hover::before,
+.comment-avatar:has(.comment-avatar-reply a):hover::after,
+.comment-avatar:has(.comment-avatar-reply a):focus-within::before,
+.comment-avatar:has(.comment-avatar-reply a):focus-within::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .comment-avatar:has(.comment-avatar-reply a:active) {
@@ -2433,6 +2488,22 @@ html[data-theme="light"] .code-copy:hover {
   gap: 1px;
 }
 
+.comment-author-line,
+.comment-badges {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.comment-author-line {
+  gap: 7px;
+}
+
+.comment-badges {
+  gap: 4px;
+}
+
 .comment-head strong,
 .comment-head strong a {
   color: var(--text);
@@ -2441,6 +2512,46 @@ html[data-theme="light"] .code-copy:hover {
   background-clip: text;
   font-size: 0.92rem;
   -webkit-text-fill-color: transparent;
+}
+
+.comment-badge {
+  display: inline-flex;
+  min-height: 18px;
+  padding: 1px 5px;
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.comment-badge-author {
+  color: #f472b6;
+}
+
+.comment-badge-friend {
+  color: #34d399;
+}
+
+.comment-badge-level-2 {
+  color: #22d3ee;
+}
+
+.comment-badge-level-3 {
+  color: #4ade80;
+}
+
+.comment-badge-level-4 {
+  color: #fbbf24;
+}
+
+.comment-badge-level-5 {
+  color: #fb7185;
 }
 
 .comment-head time {
