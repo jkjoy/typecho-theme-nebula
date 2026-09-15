@@ -380,6 +380,82 @@
     });
   }
 
+  var commentReplyController = {
+    response: function () {
+      return document.querySelector(".comments .respond");
+    },
+
+    inputParent: function (response, coid) {
+      var form = response.tagName === "FORM" ? response : response.querySelector("form");
+      if (!form) return;
+
+      var input = form.querySelector('input[name="parent"]');
+      if (!input && coid) {
+        input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "parent";
+        form.appendChild(input);
+      }
+
+      if (coid && input) input.value = String(coid);
+      else if (input) input.remove();
+    },
+
+    getChild: function (rootElement, node) {
+      if (!rootElement || !node || !rootElement.contains(node)) return null;
+      while (node.parentNode && node.parentNode !== rootElement) node = node.parentNode;
+      return node.parentNode === rootElement ? node : null;
+    },
+
+    reply: function (htmlId, coid, button) {
+      var response = this.response();
+      var comment = document.getElementById(htmlId);
+      if (!response || !comment || !button) return true;
+
+      var child = this.getChild(comment, button);
+      var holderId = response.id + "-holder";
+      var holder = document.getElementById(holderId);
+      this.inputParent(response, coid);
+
+      if (!holder) {
+        holder = document.createElement("div");
+        holder.id = holderId;
+        response.parentNode.insertBefore(holder, response);
+      }
+
+      if (child) comment.insertBefore(response, child.nextSibling);
+      else comment.appendChild(response);
+
+      var cancel = response.querySelector("#cancel-comment-reply-link");
+      if (cancel) cancel.style.display = "";
+
+      var textarea = response.querySelector('textarea[name="text"]');
+      if (textarea) textarea.focus();
+      return false;
+    },
+
+    cancelReply: function () {
+      var response = this.response();
+      if (!response) return true;
+
+      var holder = document.getElementById(response.id + "-holder");
+      this.inputParent(response, false);
+      if (!holder || !holder.parentNode) return true;
+
+      var cancel = response.querySelector("#cancel-comment-reply-link");
+      if (cancel) cancel.style.display = "none";
+      holder.parentNode.insertBefore(response, holder);
+      holder.remove();
+      return false;
+    }
+  };
+
+  function mountCommentReply() {
+    if (document.querySelector(".comments .respond")) {
+      window.TypechoComment = Object.assign(window.TypechoComment || {}, commentReplyController);
+    }
+  }
+
   function unmountPage() {
     if (revealObserver) {
       revealObserver.disconnect();
@@ -394,6 +470,7 @@
     codeBlocks();
     if (window.NebulaMemos) window.NebulaMemos.mount();
     updateNavigation();
+    mountCommentReply();
 
     var main = document.getElementById("main-content");
     if (focusMain && main) {

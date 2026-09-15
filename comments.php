@@ -1,5 +1,5 @@
 <?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
-<section class="comments" id="comments">
+<section class="comments" id="comments" data-no-swup>
     <?php $this->comments()->to($comments); ?>
     <div class="comments-heading">
         <div><p class="section-kicker">CONVERSATION</p><h2><?php $this->commentsNum('期待第一条评论', '1 条评论', '%d 条评论'); ?></h2></div>
