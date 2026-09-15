@@ -2607,6 +2607,11 @@ html[data-theme="light"] .code-copy:hover {
   margin-left: 62px;
 }
 
+/* Keep replies to an author comment on the same horizontal baseline. */
+.comment-item.comment-by-author > .comment-children {
+  margin-left: -62px;
+}
+
 .comment-entry > .respond {
   order: 1;
   margin-left: 62px;
@@ -3156,6 +3161,10 @@ html[data-theme="light"] .site-footer {
   .comment-children,
   .comment-entry > .respond {
     margin-left: 24px;
+  }
+
+  .comment-item.comment-by-author > .comment-children {
+    margin-left: -24px;
   }
 
   .comment-item.comment-by-author > .comment-entry > .respond {
