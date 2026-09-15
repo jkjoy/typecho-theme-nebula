@@ -1,6 +1,14 @@
 <?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
 <section class="comments" id="comments" data-no-swup>
-    <?php $this->comments()->to($comments); ?>
+    <?php
+    /*
+     * Typecho 默认会把超过 commentsMaxNestingLevels 的评论重新挂到浅层
+     * 父节点，并同时隐藏该层的回复链接。主题本身支持任意层级，因此在
+     * 创建评论 Widget 前临时放宽这个运行时阈值（不会修改后台配置）。
+     */
+    $this->options->commentsMaxNestingLevels = PHP_INT_MAX;
+    $this->comments()->to($comments);
+    ?>
     <div class="comments-heading">
         <div><p class="section-kicker">CONVERSATION</p><h2><?php $this->commentsNum('期待第一条评论', '1 条评论', '%d 条评论'); ?></h2></div>
     </div>
