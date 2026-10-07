@@ -28,6 +28,13 @@ function themeConfig($form)
             _t('每行一条：名称|链接|描述|头像地址，头像地址可省略。')
         ),
         new \Typecho\Widget\Helper\Form\Element\Text(
+            'memosEndpoint',
+            null,
+            '/api/v1/memos',
+            _t('说说接口地址'),
+            _t('说说页面读取的 Memos 接口，可填写站内路径或完整的 https 地址；留空使用 /api/v1/memos。')
+        ),
+        new \Typecho\Widget\Helper\Form\Element\Text(
             'footerText',
             null,
             null,
@@ -91,10 +98,16 @@ function nebula_sns_links()
 
 function nebula_theme_version()
 {
-    $index = @file_get_contents(__DIR__ . '/index.php');
-    return is_string($index) && preg_match('/@version\s+([^\s*]+)/i', $index, $matches)
-        ? trim($matches[1])
-        : '0.0.0';
+    static $version = null;
+
+    if ($version === null) {
+        $index = @file_get_contents(__DIR__ . '/index.php');
+        $version = is_string($index) && preg_match('/@version\s+([^\s*]+)/i', $index, $matches)
+            ? trim($matches[1])
+            : '0.0.0';
+    }
+
+    return $version;
 }
 
 function nebula_add_update_panel($form)
@@ -270,25 +283,41 @@ function nebula_raw_post_text($archive)
 {
     static $textCache = [];
 
-    $text = is_object($archive) ? (string) $archive->text : '';
+    if (!is_object($archive)) {
+        return '';
+    }
 
-    // Listing widgets may contain an excerpt instead of the complete source.
-    // Read the stored article by cid so images after <!--more--> are available.
-    $cid = is_object($archive) ? (int) $archive->cid : 0;
+    // Password-protected posts must not leak their excerpt or images.
+    if ($archive->hidden) {
+        return '';
+    }
+
+    $cid = (int) $archive->cid;
     if ($cid > 0 && array_key_exists($cid, $textCache)) {
         return $textCache[$cid];
     }
-    if ($cid > 0) {
+
+    // Archive widgets already load the full row, so rebuild the stored source
+    // (Typecho strips the Markdown marker from ->text) instead of querying it
+    // again for every post.
+    $text = (string) $archive->text;
+    if ($text !== '' && $archive->isMarkdown) {
+        $text = '<!--markdown-->' . $text;
+    }
+
+    // Some widgets, such as Contents\Post\Recent, omit the text column.
+    if ($text === '' && $cid > 0) {
         $database = \Typecho\Db::get();
-        $row = $database->fetchRow(
+        $stored = $database->fetchRow(
             $database->select('text')
                 ->from('table.contents')
                 ->where('cid = ?', $cid)
                 ->limit(1)
         );
-        if (isset($row['text']) && $row['text'] !== '') {
-            $text = (string) $row['text'];
-        }
+        $text = isset($stored['text']) ? (string) $stored['text'] : '';
+    }
+
+    if ($cid > 0) {
         $textCache[$cid] = $text;
     }
 
@@ -297,20 +326,28 @@ function nebula_raw_post_text($archive)
 
 function nebula_raw_post_html($archive)
 {
-    $text = nebula_raw_post_text($archive);
-    if ($text === '') {
-        return '';
+    static $htmlCache = [];
+
+    $cid = is_object($archive) ? (int) $archive->cid : 0;
+    if ($cid > 0 && array_key_exists($cid, $htmlCache)) {
+        return $htmlCache[$cid];
     }
 
+    $html = nebula_raw_post_text($archive);
+
     // Allow an UTF-8 BOM or whitespace before Typecho's Markdown marker.
-    if (preg_match('/^(?:\xEF\xBB\xBF)?\s*<!--markdown-->/i', $text, $matches)) {
-        $markdown = substr($text, strlen($matches[0]));
+    if ($html !== '' && preg_match('/^(?:\xEF\xBB\xBF)?\s*<!--markdown-->/i', $html, $matches)) {
+        $markdown = substr($html, strlen($matches[0]));
         if (class_exists('\\Utils\\Markdown')) {
-            return \Utils\Markdown::convert($markdown);
+            $html = \Utils\Markdown::convert($markdown);
         }
     }
 
-    return $text;
+    if ($cid > 0) {
+        $htmlCache[$cid] = $html;
+    }
+
+    return $html;
 }
 
 function nebula_first_content_image($archive)
@@ -391,7 +428,8 @@ function nebula_post_excerpt($archive, $length = 100, $trim = '…')
 
 function nebula_post_summary($archive)
 {
-    if (!isset($archive->fields) || !isset($archive->fields->summary)) {
+    // Keep the summary of password-protected posts private as well.
+    if (!isset($archive->fields) || !isset($archive->fields->summary) || $archive->hidden) {
         return '';
     }
 
@@ -461,12 +499,13 @@ function nebula_normalize_comment_mail($mail)
     return strtolower(trim((string) $mail));
 }
 
-function nebula_comment_identity_data()
+function nebula_comment_identity_data($cid = 0)
 {
-    static $identityData = null;
+    static $cache = [];
 
-    if ($identityData !== null) {
-        return $identityData;
+    $cid = (int) $cid;
+    if (isset($cache[$cid])) {
+        return $cache[$cid];
     }
 
     $identityData = [
@@ -476,14 +515,29 @@ function nebula_comment_identity_data()
 
     try {
         $database = \Typecho\Db::get();
-        $rows = $database->fetchAll(
-            $database->select('mail', 'COUNT(coid) AS comment_count')
-                ->from('table.comments')
-                ->where('status = ?', 'approved')
-                ->where('type = ?', 'comment')
-                ->where('mail <> ?', '')
-                ->group('mail')
-        );
+        $query = $database->select('mail', 'COUNT(coid) AS comment_count')
+            ->from('table.comments')
+            ->where('status = ?', 'approved')
+            ->where('type = ?', 'comment')
+            ->where('mail <> ?', '')
+            ->group('mail');
+
+        // Only aggregate commenters that appear on the current post instead
+        // of grouping every e-mail address in the comments table.
+        if ($cid > 0) {
+            $pageMails = array_values(array_unique(array_filter(array_map(
+                static fn($row) => trim((string) ($row['mail'] ?? '')),
+                $database->fetchAll(
+                    $database->select('mail')
+                        ->from('table.comments')
+                        ->where('cid = ?', $cid)
+                        ->where('mail <> ?', '')
+                )
+            ))));
+            $query = $pageMails ? $query->where('mail IN ?', $pageMails) : null;
+        }
+
+        $rows = $query ? $database->fetchAll($query) : [];
 
         foreach ($rows as $row) {
             $mail = nebula_normalize_comment_mail($row['mail'] ?? '');
@@ -515,7 +569,7 @@ function nebula_comment_identity_data()
         // The Links plugin and its email field are optional.
     }
 
-    return $identityData;
+    return $cache[$cid] = $identityData;
 }
 
 function nebula_comment_level($commentCount)
@@ -553,7 +607,7 @@ function threadedComments($comments, $options)
 
     $isAuthor = (int) $comments->authorId > 0 && (int) $comments->authorId === (int) $comments->ownerId;
     $mail = nebula_normalize_comment_mail($comments->mail ?? '');
-    $identityData = nebula_comment_identity_data();
+    $identityData = nebula_comment_identity_data((int) $comments->cid);
     $commentCount = $mail !== '' ? (int) ($identityData['commentCounts'][$mail] ?? 0) : 0;
     $commentLevel = $isAuthor ? 0 : nebula_comment_level($commentCount);
     $isFriend = $mail !== '' && isset($identityData['friendMails'][$mail]);

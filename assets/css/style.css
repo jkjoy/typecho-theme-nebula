@@ -1,14 +1,4 @@
-/* Alimama FangYuanTi, Copyright Taobao (China) Software Co., Ltd. */
-@font-face {
-  font-family: "Alimama FangYuanTi VF";
-  src:
-    local("Alimama FangYuanTi VF"),
-    local("阿里妈妈方圆体 VF"),
-    url("../fonts/AlimamaFangYuanTiVF-Thin.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-}
+/* Web font faces live in fonts.css (split by character frequency). */
 
 :root {
   --bg: #070b14;

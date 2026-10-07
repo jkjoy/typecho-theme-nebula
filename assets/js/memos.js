@@ -383,10 +383,41 @@
     status.textContent = totalCount === null ? "正在统计动态..." : "共 " + totalCount + " 条动态";
   }
 
+  var countCacheKey = "nebula-memos-count:" + endpoint;
+  var countCacheTtl = 10 * 60 * 1000;
+
+  function readCachedCount() {
+    try {
+      var cached = JSON.parse(window.sessionStorage.getItem(countCacheKey) || "null");
+      if (cached && typeof cached.count === "number" && Date.now() - cached.time < countCacheTtl) return cached.count;
+    } catch (error) {
+      // Storage may be unavailable in private browsing.
+    }
+    return null;
+  }
+
+  function writeCachedCount(count) {
+    try {
+      window.sessionStorage.setItem(countCacheKey, JSON.stringify({ count: count, time: Date.now() }));
+    } catch (error) {
+      // Ignore storage failures; the count is only a convenience.
+    }
+  }
+
   function countMemos() {
     var countLimit = 100;
     var page = 1;
     var count = 0;
+
+    // Counting requires walking every page of the API, so reuse a recent
+    // result instead of repeating it on each visit to the memos page.
+    var cachedCount = readCachedCount();
+    if (cachedCount !== null) {
+      totalCount = cachedCount;
+      showTotalCount();
+      return;
+    }
+
     countController = "AbortController" in window ? new AbortController() : null;
 
     function loadCountPage() {
@@ -410,6 +441,7 @@
           return loadCountPage();
         }
         totalCount = count;
+        writeCachedCount(count);
         showTotalCount();
       });
     }
@@ -459,7 +491,7 @@
       pager.hidden = currentPage === 1 && data.length < limit;
     }).catch(function (error) {
       if (!mounted || (error && error.name === "AbortError")) return;
-      renderMessage("暂时无法读取说说", "请检查网络连接或接口 /api/v1/memos 是否可用。", true);
+      renderMessage("暂时无法读取说说", "请检查网络连接或说说接口是否可用。", true);
       status.textContent = "加载失败";
       pageLabel.textContent = "第 " + currentPage + " 页";
       prevButton.disabled = currentPage <= 1;

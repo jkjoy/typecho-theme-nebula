@@ -14,7 +14,7 @@ $this->need('header.php');
         <p>捕捉日常里的微光，收藏此刻的心情</p>
     </header>
 
-    <section class="memos-layout reveal" data-memos-endpoint="/api/v1/memos" data-memos-limit="20" aria-labelledby="memos-title">
+    <section class="memos-layout reveal" data-memos-endpoint="<?php echo htmlspecialchars(nebula_option('memosEndpoint', '/api/v1/memos'), ENT_QUOTES, 'UTF-8'); ?>" data-memos-limit="20" aria-labelledby="memos-title">
         <h2 class="sr-only" id="memos-title">说说动态</h2>
         <div class="memos-toolbar">
             <span class="memos-toolbar-label"><span class="memos-live-dot" aria-hidden="true"></span>最近动态</span>
