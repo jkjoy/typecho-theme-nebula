@@ -2045,17 +2045,19 @@ html[data-theme="light"] .article-content code:not(pre code) {
 .code-language {
   position: absolute;
   top: 0;
-  left: 78px;
-  display: flex;
+  left: 50%;
+  display: block;
+  width: max-content;
   height: 38px;
   max-width: calc(100% - 174px);
   overflow: hidden;
-  align-items: center;
+  transform: translateX(-50%);
   color: #8f9bb3;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 700;
-  line-height: 1;
+  line-height: 38px;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2816,44 +2818,56 @@ html[data-theme="light"] .site-footer {
   color: var(--text);
 }
 
-.back-top {
+.scroll-tools {
   position: fixed;
   z-index: 90;
-  right: 22px;
-  bottom: 22px;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
   display: grid;
+  gap: 8px;
   width: 44px;
-  height: 44px;
-  place-items: center;
   visibility: hidden;
-  border-radius: 50%;
-  color: var(--text);
-  background: var(--surface-strong);
-  box-shadow: var(--shadow-border), var(--shadow-card);
   opacity: 0;
   transform: translateY(12px);
-  transition-property: opacity, transform, visibility, background-color, scale;
-  transition-duration: 180ms;
-  transition-timing-function: ease-out;
+  transition: opacity 180ms ease-out, transform 180ms ease-out, visibility 180ms ease-out;
 }
 
-.back-top.show {
+.scroll-tools.show {
   visibility: visible;
   opacity: 1;
   transform: translateY(0);
 }
 
-.back-top:hover {
+.scroll-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-border), var(--shadow-card);
+  transition-property: opacity, transform, background-color, scale;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+}
+
+.scroll-button:hover:not(:disabled) {
   color: var(--accent-2);
   background: var(--surface-hover);
   transform: translateY(-3px);
 }
 
-.back-top:active {
+.scroll-button:active:not(:disabled) {
   scale: 0.96;
 }
 
-.back-top svg {
+.scroll-button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.scroll-button svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -2861,6 +2875,21 @@ html[data-theme="light"] .site-footer {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.scroll-progress {
+  display: grid;
+  min-height: 28px;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--text-soft);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-border);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 @media (max-width: 920px) {
@@ -3182,9 +3211,9 @@ html[data-theme="light"] .site-footer {
     margin-top: 5px;
   }
 
-  .back-top {
-    right: 16px;
-    bottom: 16px;
+  .scroll-tools {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
 

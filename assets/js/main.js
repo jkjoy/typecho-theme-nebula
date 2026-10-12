@@ -193,27 +193,59 @@
     });
   }
 
-  (function backToTop() {
-    var button = document.getElementById("back-top");
-    if (!button) return;
+  var updateScrollTools = (function scrollTools() {
+    var tools = document.getElementById("scroll-tools");
+    var topButton = document.getElementById("back-top");
+    var bottomButton = document.getElementById("back-bottom");
+    var progress = document.getElementById("scroll-progress");
+    if (!tools || !topButton || !bottomButton || !progress) return function () {};
     var scheduled = false;
 
+    function scrollRange() {
+      var scrollingElement = document.scrollingElement || root;
+      return Math.max(0, scrollingElement.scrollHeight - root.clientHeight);
+    }
+
     function update() {
-      button.classList.toggle("show", window.scrollY > 420);
+      var range = scrollRange();
+      var position = Math.min(range, Math.max(0, window.scrollY));
+      var percentage = range > 0 ? Math.round(position / range * 100) : 0;
+      var text = percentage + "%";
+
+      if (progress.textContent !== text) {
+        progress.textContent = text;
+        progress.setAttribute("aria-valuenow", String(percentage));
+      }
+      tools.classList.toggle("show", range > 1);
+      topButton.disabled = position <= 1;
+      bottomButton.disabled = range - position <= 1;
       scheduled = false;
     }
 
-    window.addEventListener("scroll", function () {
+    function scheduleUpdate() {
       if (scheduled) return;
       scheduled = true;
       window.requestAnimationFrame(update);
-    }, { passive: true });
+    }
 
-    button.addEventListener("click", function () {
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("pageshow", scheduleUpdate);
+    document.addEventListener("load", scheduleUpdate, true);
+    if ("ResizeObserver" in window) {
+      var observer = new ResizeObserver(scheduleUpdate);
+      observer.observe(document.body);
+    }
+
+    topButton.addEventListener("click", function () {
       window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+    });
+    bottomButton.addEventListener("click", function () {
+      window.scrollTo({ top: scrollRange(), behavior: reducedMotion ? "auto" : "smooth" });
     });
 
     update();
+    return scheduleUpdate;
   })();
 
   (function starfield() {
@@ -471,6 +503,7 @@
     if (window.NebulaMemos) window.NebulaMemos.mount();
     updateNavigation();
     mountCommentReply();
+    updateScrollTools();
 
     var main = document.getElementById("main-content");
     if (focusMain && main) {

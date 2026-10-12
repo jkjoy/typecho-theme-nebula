@@ -19,9 +19,15 @@
         <?php if (nebula_option('footerText')): ?><div class="footer-extra"><?php echo nebula_option('footerText'); ?></div><?php endif; ?>
     </div>
 </footer>
-<button class="back-top" id="back-top" type="button" aria-label="回到顶部">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
-</button>
+<div class="scroll-tools" id="scroll-tools" role="group" aria-label="页面滚动工具">
+    <button class="scroll-button" id="back-top" type="button" aria-label="回到顶部" title="回到顶部">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+    </button>
+    <span class="scroll-progress" id="scroll-progress" role="progressbar" aria-label="页面滚动进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">0%</span>
+    <button class="scroll-button" id="back-bottom" type="button" aria-label="到达底部" title="到达底部">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-7-7 7 7 7-7"></path></svg>
+    </button>
+</div>
 <script src="<?php echo htmlspecialchars(nebula_asset_url('assets/vendor/swup/Swup.umd.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <script src="<?php echo htmlspecialchars(nebula_asset_url('assets/js/memos.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <script src="<?php echo htmlspecialchars(nebula_asset_url('assets/js/main.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
