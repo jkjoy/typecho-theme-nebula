@@ -34,7 +34,7 @@
                         <label><span>网站<?php if (!$this->options->commentsRequireUrl): ?>（选填）<?php endif; ?></span><input type="url" name="url" value="<?php $this->remember('url'); ?>" autocomplete="url" placeholder="https://"<?php if ($this->options->commentsRequireUrl): ?> required<?php endif; ?>></label>
                     </div>
                 <?php endif; ?>
-                <label class="textarea-label"><span>评论内容</span><textarea name="text" rows="6" required><?php $this->remember('text'); ?></textarea></label>
+                <label class="textarea-label"><span>评论内容（不支持 HTML 标签）</span><textarea name="text" rows="6" required><?php $this->remember('text'); ?></textarea></label>
                 <button class="btn submit-comment" type="submit">提交评论 <span aria-hidden="true">→</span></button>
             </form>
         </div>

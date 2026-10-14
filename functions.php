@@ -198,11 +198,41 @@ function themePostFields($layout)
 function themeInit($archive)
 {
     static $stickyQueryRegistered = false;
+    static $commentValidatorRegistered = false;
+
+    if (!$commentValidatorRegistered) {
+        // Validate after existing filters, retaining their moderation and other changes.
+        $handles = \Typecho\Plugin::export()['handles']['Widget_Feedback:comment'] ?? [];
+        $weight = $handles ? (int) ceil(max(array_map('floatval', array_keys($handles))) + 11) : 11;
+        \Widget\Feedback::pluginHandle()->{'comment_' . $weight} = 'nebula_validate_comment';
+        $commentValidatorRegistered = true;
+    }
 
     if (!$stickyQueryRegistered && ($archive->is('index') || $archive->is('category'))) {
         \Widget\Archive::pluginHandle()->query = 'nebula_query_sticky_posts';
         $stickyQueryRegistered = true;
     }
+}
+
+function nebula_validate_comment($comment, $archive, $lastResult = null)
+{
+    // Typecho 1.2 supplies preceding plugin results only in the third argument.
+    $comment = is_array($lastResult) ? $lastResult : $comment;
+    // Check both the submission and the result of any plugin transformations.
+    $texts = [\Typecho\Request::getInstance()->get('text', ''), $comment['text'] ?? ''];
+    foreach ($texts as $text) {
+        // Exclude complete Markdown autolinks before detecting HTML tag starts.
+        $tagText = preg_replace(
+            '~<(?:https?://[^\s<>]+|(?:mailto:)?[_a-z0-9.+-]+@[_\w-]+(?:\.[a-z]{2,})+)>~i',
+            ' ',
+            (string) $text
+        );
+        if (preg_match('~</?[a-z]|<!|<\?~i', $tagText)) {
+            throw new \Typecho\Widget\Exception(_t('评论不支持 HTML 标签，请使用纯文本或 Markdown。'), 400);
+        }
+    }
+
+    return $comment;
 }
 
 function nebula_query_sticky_posts($archive, $select)
@@ -593,6 +623,114 @@ function nebula_comment_level($commentCount)
     return $commentCount > 0 ? 1 : 0;
 }
 
+function nebula_comment_content($comments)
+{
+    $text = $comments->parentContent->hidden ? _t('内容被隐藏') : (string) $comments->text;
+    $plainText = nl2br(htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false);
+    if (!\Widget\Options::alloc()->commentsMarkdown || !method_exists('DOMDocument', 'loadHTML')) {
+        return $plainText;
+    }
+
+    static $parser = null;
+    if ($parser === null) {
+        $parser = new \Utils\HyperDown();
+        $parser->enableHtml(false);
+        // Raw opening brackets are masked before parsing. Preserve tags made
+        // by Markdown itself (such as footnote backlinks) and escape other >.
+        $parser->hook('beforeParseInline', static function ($text) use ($parser) {
+            return preg_replace_callback('/<[^>]*>|>/', static function ($match) use ($parser) {
+                return $match[0][0] === '<' ? $match[0] : $parser->makeHolder('&gt;');
+            }, $text);
+        });
+    }
+
+    // A per-comment marker keeps HTML literal without double-escaping code.
+    do {
+        $htmlMarker = '{NEBULARAWHTML' . bin2hex(random_bytes(16)) . '}';
+    } while (strpos($text, $htmlMarker) !== false);
+    $parsed = $parser->makeHtml(str_replace('<', $htmlMarker, $text));
+    $parsed = str_replace($htmlMarker, '&lt;', $parsed);
+
+    $document = new \DOMDocument('1.0', 'UTF-8');
+    $previousErrors = libxml_use_internal_errors(true);
+    try {
+        $loaded = $document->loadHTML(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' .
+            $parsed . '</body></html>',
+            LIBXML_NONET
+        );
+    } finally {
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrors);
+    }
+    if (!$loaded) {
+        return $plainText;
+    }
+
+    $allowedTags = array_fill_keys(explode(' ',
+        'p br hr blockquote pre strong em del ul h1 h2 h3 h4 h5 h6 table thead tbody tfoot tr'
+    ), []);
+    $allowedTags += [
+        'a' => ['href', 'title', 'id'],
+        'img' => ['src', 'alt', 'title'],
+        'code' => ['class'],
+        'div' => ['class'],
+        'ol' => ['start'],
+        'li' => ['id'],
+        'sup' => ['id'],
+        'th' => ['align', 'colspan'],
+        'td' => ['align', 'colspan'],
+    ];
+    $idPrefix = 'nebula-comment-' . (int) ($comments->coid ?? 0) . '-';
+    $render = static function ($node) use (&$render, $allowedTags, $idPrefix) {
+        if ($node instanceof \DOMText) {
+            return htmlspecialchars($node->nodeValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        }
+        if (!($node instanceof \DOMElement)) {
+            return '';
+        }
+
+        $content = '';
+        foreach ($node->childNodes as $child) {
+            $content .= $render($child);
+        }
+        $tag = strtolower($node->tagName);
+        if (!isset($allowedTags[$tag])) {
+            return $content;
+        }
+
+        $attributes = '';
+        foreach ($allowedTags[$tag] as $attribute) {
+            if (!$node->hasAttribute($attribute)) continue;
+            $value = $node->getAttribute($attribute);
+            if ($attribute === 'id' && preg_match('/^fn(?:ref)?-\d+$/', $value)) {
+                $value = $idPrefix . $value;
+            } elseif ($attribute === 'href' && preg_match('/^#fn(?:ref)?-\d+$/', $value)) {
+                $value = '#' . $idPrefix . substr($value, 1);
+            }
+            if ($attribute === 'href' || $attribute === 'src') {
+                $value = trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $protocols = $attribute === 'src' ? '#^https?://#i' : '#^(?:https?://|mailto:)#i';
+                if ($value === '' || preg_match('/[\x00-\x20\x7f]/', $value) ||
+                    (preg_match('/^[^\/?#]*:/', $value) && !preg_match($protocols, $value))) {
+                    continue;
+                }
+            }
+            $attributes .= ' ' . $attribute . '="' .
+                htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+        }
+        $openingTag = '<' . $tag . $attributes . '>';
+        return in_array($tag, ['br', 'hr', 'img'], true)
+            ? $openingTag : $openingTag . $content . '</' . $tag . '>';
+    };
+
+    $html = '';
+    foreach ($document->getElementsByTagName('body')->item(0)->childNodes as $node) {
+        $html .= $render($node);
+    }
+    return $html;
+}
+
 function threadedComments($comments, $options)
 {
     static $commentAuthors = [];
@@ -614,6 +752,9 @@ function threadedComments($comments, $options)
     $commentClass = ($comments->levels > 0 ? ' comment-child' : '') . ($isAuthor ? ' comment-by-author' : '');
     $replyLabel = _t('点击头像回复 %s', strip_tags((string) $comments->author));
     $replyTip = _t('点击头像回复');
+    $siteOptions = \Widget\Options::alloc();
+    $authorUrl = $siteOptions->commentsShowUrl && $comments->url
+        ? \Typecho\Common::safeUrl((string) $comments->url) : '';
     ?>
     <li id="li-<?php $comments->theId(); ?>" class="comment-item<?php echo $commentClass; ?>">
         <div id="<?php $comments->theId(); ?>" class="comment-entry">
@@ -625,7 +766,7 @@ function threadedComments($comments, $options)
                 </div>
                 <div class="comment-head">
                     <div class="comment-author-line">
-                        <strong><?php $comments->author(); ?></strong>
+                        <strong><?php if ($authorUrl !== ''): ?><a href="<?php echo htmlspecialchars($authorUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>"<?php if ($siteOptions->commentsUrlNofollow): ?> rel="external nofollow"<?php endif; ?>><?php echo htmlspecialchars($authorName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></a><?php else: ?><?php echo htmlspecialchars($authorName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?><?php endif; ?></strong>
                         <?php if ($isAuthor || $commentLevel > 0 || $isFriend): ?>
                             <span class="comment-badges">
                                 <?php if ($isAuthor): ?><span class="comment-badge comment-badge-author" title="本站博主">博主</span><?php endif; ?>
@@ -638,7 +779,7 @@ function threadedComments($comments, $options)
                 </div>
             </div>
             <div class="comment-main">
-                <div class="comment-content"><?php if ($replyToAuthor !== ''): ?><span class="comment-reply-to">@<?php echo htmlspecialchars($replyToAuthor, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?><?php $comments->content(); ?></div>
+                <div class="comment-content"><?php if ($replyToAuthor !== ''): ?><span class="comment-reply-to">@<?php echo htmlspecialchars($replyToAuthor, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?><?php echo nebula_comment_content($comments); ?></div>
             </div>
         </div>
         <?php if ($comments->children): ?>
