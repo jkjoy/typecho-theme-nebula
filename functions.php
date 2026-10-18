@@ -661,6 +661,16 @@ function nebula_comment_level($commentCount)
 
 function nebula_comment_content($comments)
 {
+    $html = nebula_comment_safe_content($comments);
+
+    // Run the standard comment contentEx hook on the sanitized HTML so plugins
+    // (smileys, shortcodes, link rewriting) keep working. Raw comment HTML has
+    // already been escaped or filtered, so plugins only receive safe markup.
+    return (string) \Widget\Base\Comments::pluginHandle()->filter('contentEx', $html, $comments);
+}
+
+function nebula_comment_safe_content($comments)
+{
     $text = $comments->parentContent->hidden ? _t('内容被隐藏') : (string) $comments->text;
     $plainText = nl2br(htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false);
     if (!\Widget\Options::alloc()->commentsMarkdown || !method_exists('DOMDocument', 'loadHTML')) {

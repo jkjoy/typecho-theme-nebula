@@ -2706,6 +2706,18 @@ html[data-theme="light"] .code-copy:hover {
   border-radius: 8px;
 }
 
+/* Plugin smileys (e.g. Enhancement) sit inline with the comment text. */
+.comment-content img.enhancement-smiley,
+.comment-content img[src*="/smiley/"] {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin: 0 0.08em;
+  border-radius: 0;
+  outline: 0;
+  vertical-align: -0.15em;
+}
+
 .cancel-comment-reply a {
   display: inline-flex;
   min-height: 40px;
