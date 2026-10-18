@@ -65,6 +65,11 @@
     var pending = false;
     var controller = null;
     var widgetId = null;
+    var challengeApi = null;
+    var challengeSize = "";
+    var challengeTheme = "";
+    var challengeResizeObserver = null;
+    var challengeThemeObserver = null;
 
     function message(text, state) {
       if (!mounted) return;
@@ -73,17 +78,45 @@
       status.hidden = false;
     }
 
+    function renderChallenge() {
+      if (!mounted || !challengeApi) return;
+      // Flexible widgets need at least 300px; keep narrow screens usable without scaling.
+      var size = challenge.clientWidth >= 300 ? "flexible" : "compact";
+      var theme = document.documentElement.dataset.theme || "auto";
+      if (widgetId !== null && size === challengeSize && theme === challengeTheme) return;
+      if (widgetId !== null) challengeApi.remove(widgetId);
+      widgetId = null;
+      challenge.classList.remove("is-interactive");
+      widgetId = challengeApi.render(challenge, {
+        sitekey: challenge.dataset.sitekey,
+        size: size,
+        theme: theme,
+        appearance: "interaction-only",
+        "before-interactive-callback": function () {
+          if (mounted) challenge.classList.add("is-interactive");
+        },
+        "error-callback": function () {
+          if (!pending && status.dataset.state !== "success") message("人机验证暂时不可用，请刷新页面后重试。", "error");
+        }
+      });
+      challengeSize = size;
+      challengeTheme = theme;
+    }
+
     function initChallenge() {
       if (!mounted || !required || !challenge) return;
       loadTurnstile().then(function (api) {
         if (!mounted) return;
-        widgetId = api.render(challenge, {
-          sitekey: challenge.dataset.sitekey,
-          size: "compact",
-          theme: document.documentElement.dataset.theme || "auto",
-          "error-callback": function () {
-            if (!pending && status.dataset.state !== "success") message("人机验证暂时不可用，请刷新页面后重试。", "error");
-          }
+        challengeApi = api;
+        renderChallenge();
+        if ("ResizeObserver" in window) {
+          challengeResizeObserver = new ResizeObserver(renderChallenge);
+          challengeResizeObserver.observe(challenge);
+        } else window.addEventListener("resize", renderChallenge);
+        challengeThemeObserver = new MutationObserver(renderChallenge);
+        challengeThemeObserver.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme"]
         });
       }).catch(function (error) {
         if (status.dataset.state !== "success") message(error.message, "error");
@@ -101,7 +134,7 @@
 
       var data = new FormData(form);
       if (required && !String(data.get("cf-turnstile-response") || "").trim()) {
-        message("请先完成人机验证，再提交申请。", "error");
+        message("人机验证尚未完成，请稍候或按提示完成验证后重试。", "error");
         return;
       }
       pending = true;
@@ -139,7 +172,10 @@
         button.disabled = false;
         button.textContent = label;
         form.removeAttribute("aria-busy");
-        if (widgetId !== null && window.turnstile) window.turnstile.reset(widgetId);
+        if (widgetId !== null && window.turnstile) {
+          challenge.classList.remove("is-interactive");
+          window.turnstile.reset(widgetId);
+        }
       });
     }
 
@@ -153,6 +189,9 @@
       mounted = false;
       form.removeEventListener("submit", submit);
       document.removeEventListener("DOMContentLoaded", initChallenge);
+      if (challengeResizeObserver) challengeResizeObserver.disconnect();
+      if (challengeThemeObserver) challengeThemeObserver.disconnect();
+      window.removeEventListener("resize", renderChallenge);
       if (controller) controller.abort();
       if (widgetId !== null && window.turnstile) window.turnstile.remove(widgetId);
     };

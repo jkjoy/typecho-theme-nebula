@@ -1463,6 +1463,11 @@ html.js .reveal.visible {
 }
 
 .link-apply-challenge {
+  min-width: 0;
+  line-height: 0;
+}
+
+.link-apply-challenge.is-interactive {
   margin-top: 18px;
 }
 

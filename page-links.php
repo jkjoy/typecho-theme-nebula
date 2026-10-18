@@ -58,7 +58,7 @@ $logoUrl = nebula_option('logoUrl');
                     <label class="link-apply-description" for="link-apply-description"><span>一句简介 <em>选填</em></span><textarea id="link-apply-description" name="description" maxlength="200" rows="3" placeholder="介绍一下你的站点，最多 200 字"></textarea></label>
                 </div>
                 <?php if ($application['turnstile_required']): ?>
-                    <div class="link-apply-challenge" data-sitekey="<?php echo htmlspecialchars($application['turnstile_site_key'], ENT_QUOTES, 'UTF-8'); ?>" data-size="compact"></div>
+                    <div class="link-apply-challenge" data-sitekey="<?php echo htmlspecialchars($application['turnstile_site_key'], ENT_QUOTES, 'UTF-8'); ?>"></div>
                     <noscript><p class="link-apply-note">请启用 JavaScript，完成人机验证后提交申请。</p></noscript>
                 <?php endif; ?>
                 <div class="link-apply-actions"><button class="btn" type="submit" data-link-apply-submit>提交申请 →</button><span>审核通过后展示</span></div>
