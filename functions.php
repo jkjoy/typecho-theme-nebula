@@ -466,6 +466,42 @@ function nebula_post_summary($archive)
     return trim((string) $archive->fields->summary);
 }
 
+function nebula_friend_link_application()
+{
+    try {
+        $options = \Widget\Options::alloc();
+        if (!isset($options->plugins['activated']['Enhancement'])
+            || !class_exists('Enhancement_Plugin')
+            || !method_exists('Enhancement_Plugin', 'publicForm')) {
+            return null;
+        }
+
+        $turnstileRequired = method_exists('Enhancement_Plugin', 'turnstileEnabled')
+            && Enhancement_Plugin::turnstileEnabled();
+        $siteKey = '';
+        if ($turnstileRequired) {
+            if (!method_exists('Enhancement_Plugin', 'turnstileReady')
+                || !Enhancement_Plugin::turnstileReady()
+                || !method_exists('Enhancement_Plugin', 'turnstileSiteKey')) {
+                return null;
+            }
+            $siteKey = trim((string) Enhancement_Plugin::turnstileSiteKey());
+            if ($siteKey === '') {
+                return null;
+            }
+        }
+
+        return [
+            'action' => \Helper::security()->getIndex('/action/enhancement-submit'),
+            'turnstile_required' => $turnstileRequired,
+            'turnstile_site_key' => $siteKey,
+        ];
+    } catch (\Throwable $error) {
+        // Keep the exchange instructions available if the optional plugin is unavailable.
+        return null;
+    }
+}
+
 function nebula_friend_links()
 {
     $links = [];

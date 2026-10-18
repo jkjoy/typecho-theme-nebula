@@ -203,6 +203,8 @@
     var links = [];
     var activeIndex = -1;
     var frame = 0;
+    var scrollFrame = 0;
+    var offset = 88;
     var observer = null;
     var wideScreen = window.matchMedia("(min-width: 1280px)");
 
@@ -219,40 +221,89 @@
       return (parseFloat(getComputedStyle(root).getPropertyValue("--nav-h")) || 64) + 24;
     }
 
-    function update() {
-      frame = 0;
-      if (!headings.length) return;
-      var index = 0;
-      var offset = headingOffset() + 4;
-      for (var i = 0; i < headings.length; i++) {
-        if (headings[i].getBoundingClientRect().top > offset) break;
-        index = i;
-      }
-      if (window.scrollY > 0 && window.scrollY + root.clientHeight >= root.scrollHeight - 2) {
-        index = headings.length - 1;
-      }
+    function setActive(index) {
       if (index === activeIndex) return;
+      var link = links[index];
+      // Read before changing font weight to avoid forcing layout after a write.
+      var linkRect = link.getBoundingClientRect();
+      var listRect = list.getBoundingClientRect();
+      var listTop = list.scrollTop;
+      if (linkRect.top < listRect.top) listTop += linkRect.top - listRect.top;
+      else if (linkRect.bottom > listRect.bottom) listTop += linkRect.bottom - listRect.bottom;
       if (links[activeIndex]) {
         links[activeIndex].classList.remove("is-active");
         links[activeIndex].removeAttribute("aria-current");
       }
-      var link = links[index];
       link.classList.add("is-active");
       link.setAttribute("aria-current", "location");
       activeIndex = index;
+      list.scrollTop = listTop;
+    }
 
-      var linkRect = link.getBoundingClientRect();
-      var listRect = list.getBoundingClientRect();
-      if (linkRect.top < listRect.top) list.scrollTop += linkRect.top - listRect.top;
-      else if (linkRect.bottom > listRect.bottom) list.scrollTop += linkRect.bottom - listRect.bottom;
+    function update() {
+      frame = 0;
+      if (!headings.length || scrollFrame) return;
+      var index = 0;
+      var low = 0;
+      var high = headings.length - 1;
+      // Headings are in document order; manual scrolling needs only a few reads.
+      while (low <= high) {
+        var middle = (low + high) >> 1;
+        if (headings[middle].getBoundingClientRect().top <= offset + 4) {
+          index = middle;
+          low = middle + 1;
+        } else high = middle - 1;
+      }
+      if (window.scrollY > 0 && window.scrollY + root.clientHeight >= root.scrollHeight - 2) {
+        index = headings.length - 1;
+      }
+      setActive(index);
     }
 
     function scheduleUpdate() {
-      if (headings.length && !frame) frame = window.requestAnimationFrame(update);
+      if (headings.length && !scrollFrame && !frame) frame = window.requestAnimationFrame(update);
+    }
+
+    function stopScroll() {
+      if (!scrollFrame) return;
+      window.cancelAnimationFrame(scrollFrame);
+      scrollFrame = 0;
+      scheduleUpdate();
+    }
+
+    function scrollToHeading(index) {
+      stopScroll();
+      offset = headingOffset();
+      var start = window.scrollY;
+      var target = Math.max(0, Math.min(root.scrollHeight - root.clientHeight,
+        headings[index].getBoundingClientRect().top + start - offset));
+      var distance = target - start;
+      // Stop any native smooth scroll. "auto" would inherit the root's smooth behavior.
+      window.scrollTo({ top: start, behavior: "instant" });
+      setActive(index);
+      if (reducedMotion || Math.abs(distance) < 2) {
+        window.scrollTo({ top: target, behavior: "instant" });
+        scheduleUpdate();
+        return;
+      }
+      var duration = Math.min(520, Math.max(240, 180 + Math.sqrt(Math.abs(distance)) * 7));
+      var startedAt = performance.now();
+      function step(time) {
+        var progress = Math.max(0, Math.min(1, (time - startedAt) / duration));
+        var eased = 1 - Math.pow(1 - progress, 3);
+        window.scrollTo({ top: start + distance * eased, behavior: "instant" });
+        if (progress < 1) scrollFrame = window.requestAnimationFrame(step);
+        else {
+          scrollFrame = 0;
+          scheduleUpdate();
+        }
+      }
+      scrollFrame = window.requestAnimationFrame(step);
     }
 
     function unmount() {
       close(false);
+      stopScroll();
       if (frame) window.cancelAnimationFrame(frame);
       if (observer) observer.disconnect();
       frame = 0;
@@ -274,6 +325,7 @@
         return heading.textContent.trim() !== "";
       });
       if (!headings.length) return;
+      offset = headingOffset();
 
       var minLevel = Math.min.apply(null, headings.map(function (heading) { return Number(heading.tagName.slice(1)); }));
       var fragment = document.createDocumentFragment();
@@ -331,27 +383,29 @@
           state = Object.assign({}, state, { url: window.location.pathname + window.location.search + hash });
         }
         window.history.replaceState(state, "", hash);
-        window.scrollTo({
-          top: headings[index].getBoundingClientRect().top + window.scrollY - headingOffset(),
-          behavior: reducedMotion ? "auto" : "smooth"
-        });
-        scheduleUpdate();
+        scrollToHeading(index);
       });
       document.addEventListener("pointerdown", function (event) {
         if (!panel.contains(event.target) && !button.contains(event.target)) close(false);
       });
       document.addEventListener("keydown", function (event) {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown", "Home", "End", " ", "Escape"].indexOf(event.key) !== -1) stopScroll();
         if (event.key === "Escape" && panel.classList.contains("is-open")) close(true);
       });
+      window.addEventListener("wheel", stopScroll, { passive: true });
+      window.addEventListener("touchstart", stopScroll, { passive: true });
+      window.addEventListener("pointerdown", stopScroll, { passive: true });
       window.addEventListener("scroll", scheduleUpdate, { passive: true });
       window.addEventListener("resize", function () {
+        stopScroll();
+        offset = headingOffset();
         if (wideScreen.matches) close(false);
         scheduleUpdate();
       });
       document.addEventListener("load", scheduleUpdate, true);
     }
 
-    return { mount: mount, unmount: unmount, close: close };
+    return { mount: mount, unmount: unmount, close: close, stopScroll: stopScroll };
   })();
 
   var updateScrollTools = (function scrollTools() {
@@ -540,6 +594,7 @@
     var searchButton = document.getElementById("search-toggle");
     var searchPanel = document.getElementById("search-panel");
     articleToc.close(false);
+    articleToc.stopScroll();
     document.body.classList.remove("nav-open");
     if (menuButton) {
       menuButton.setAttribute("aria-expanded", "false");
@@ -657,6 +712,7 @@
       revealObserver = null;
     }
     if (window.NebulaMemos) window.NebulaMemos.unmount();
+    if (window.NebulaLinks) window.NebulaLinks.unmount();
   }
 
   function mountPage(focusMain) {
@@ -664,6 +720,7 @@
     imageFallbacks();
     codeBlocks();
     if (window.NebulaMemos) window.NebulaMemos.mount();
+    if (window.NebulaLinks) window.NebulaLinks.mount();
     updateNavigation();
     mountCommentReply();
     updateScrollTools();

@@ -44,6 +44,7 @@
 </div>
 <script src="<?php echo htmlspecialchars(nebula_asset_url('assets/vendor/swup/Swup.umd.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <script src="<?php echo htmlspecialchars(nebula_asset_url('assets/js/memos.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+<script src="<?php echo htmlspecialchars(nebula_asset_url('assets/js/links.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <script src="<?php echo htmlspecialchars(nebula_asset_url('assets/js/main.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <?php $this->footer(); ?>
 </body>
