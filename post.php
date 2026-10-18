@@ -16,7 +16,7 @@
                 <p><?php echo nl2br(htmlspecialchars($summary, ENT_QUOTES, 'UTF-8'), false); ?></p>
             </aside>
         <?php endif; ?>
-        <div class="article-content reveal" itemprop="articleBody"><?php $this->content(); ?></div>
+        <div class="article-content reveal" itemprop="articleBody" data-toc-content><?php $this->content(); ?></div>
         <footer class="article-footer">
             <div class="article-tags"><?php $this->tags(' ', true, '<em>暂无标签</em>'); ?></div>
         </footer>

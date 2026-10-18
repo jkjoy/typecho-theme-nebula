@@ -2892,7 +2892,178 @@ html[data-theme="light"] .site-footer {
   line-height: 1;
 }
 
+.article-toc[hidden],
+.toc-toggle[hidden] {
+  display: none;
+}
+
+.article-toc {
+  position: fixed;
+  z-index: 91;
+  right: calc(max(22px, env(safe-area-inset-right)) + 56px);
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  width: min(300px, calc(100vw - 100px));
+  max-height: min(60vh, calc(100vh - 120px));
+  max-height: min(60dvh, calc(100dvh - 120px));
+  padding: 10px 16px 18px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-border), var(--shadow-card);
+  backdrop-filter: blur(20px);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 180ms ease-out, transform 180ms ease-out, visibility 180ms ease-out;
+}
+
+.article-toc.is-open {
+  pointer-events: auto;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.article-toc-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  margin-bottom: 8px;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.article-toc-close {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  margin-right: -10px;
+  place-items: center;
+  border-radius: var(--radius-small);
+  color: var(--text-muted);
+  background: transparent;
+  transition: color 180ms ease-out, background-color 180ms ease-out, scale 180ms ease-out;
+}
+
+.article-toc-close:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.article-toc-close:active {
+  scale: 0.96;
+}
+
+.article-toc-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.article-toc > nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.article-toc-list {
+  padding: 2px 4px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  list-style: none;
+}
+
+.article-toc-item {
+  position: relative;
+  border-left: 1px solid var(--border-strong);
+}
+
+.article-toc-link {
+  display: block;
+  min-height: 40px;
+  padding: 9px 0 9px calc(16px + min(var(--toc-depth, 0), 3) * 10px);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  transition: color 180ms ease-out;
+}
+
+.article-toc-link:hover,
+.article-toc-link:focus-visible {
+  color: var(--text);
+}
+
+.article-toc-link.is-active {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.article-toc-link.is-active::before {
+  position: absolute;
+  top: calc(6px + 0.775em);
+  left: -3.5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.toc-toggle[aria-expanded="true"] {
+  color: var(--accent-2);
+}
+
+[data-toc-content] :is(h1, h2, h3, h4, h5, h6) {
+  /* The root scroll-padding already provides the sticky header offset. */
+  scroll-margin-top: 0;
+}
+
+@media (min-width: 1280px) {
+  .article-toc {
+    top: 164px;
+    right: auto;
+    bottom: auto;
+    left: calc(50% + var(--article) / 2 + 32px);
+    width: min(240px, calc(50% - var(--article) / 2 - 56px));
+    max-height: calc(100vh - 236px);
+    max-height: calc(100dvh - 236px);
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    pointer-events: auto;
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .article-toc-head,
+  .toc-toggle {
+    display: none;
+  }
+}
+
 @media (max-width: 920px) {
+  html {
+    /* Keep the page width stable while the open menu locks scrolling. */
+    scrollbar-gutter: stable;
+  }
+
   .page-head h1 {
     font-size: 2.65rem;
   }
@@ -3213,6 +3384,11 @@ html[data-theme="light"] .site-footer {
 
   .scroll-tools {
     right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .article-toc {
+    right: calc(max(16px, env(safe-area-inset-right)) + 56px);
     bottom: max(16px, env(safe-area-inset-bottom));
   }
 }

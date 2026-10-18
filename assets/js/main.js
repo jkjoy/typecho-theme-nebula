@@ -193,6 +193,167 @@
     });
   }
 
+  var articleToc = (function () {
+    var panel = document.getElementById("article-toc");
+    var list = document.getElementById("article-toc-list");
+    var button = document.getElementById("toc-toggle");
+    var closeButton = document.getElementById("toc-close");
+    var tools = document.getElementById("scroll-tools");
+    var headings = [];
+    var links = [];
+    var activeIndex = -1;
+    var frame = 0;
+    var observer = null;
+    var wideScreen = window.matchMedia("(min-width: 1280px)");
+
+    function close(restoreFocus) {
+      if (!panel || !button) return;
+      var wasOpen = panel.classList.contains("is-open");
+      panel.classList.remove("is-open");
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-label", "打开文章目录");
+      if (restoreFocus && wasOpen) button.focus({ preventScroll: true });
+    }
+
+    function headingOffset() {
+      return (parseFloat(getComputedStyle(root).getPropertyValue("--nav-h")) || 64) + 24;
+    }
+
+    function update() {
+      frame = 0;
+      if (!headings.length) return;
+      var index = 0;
+      var offset = headingOffset() + 4;
+      for (var i = 0; i < headings.length; i++) {
+        if (headings[i].getBoundingClientRect().top > offset) break;
+        index = i;
+      }
+      if (window.scrollY > 0 && window.scrollY + root.clientHeight >= root.scrollHeight - 2) {
+        index = headings.length - 1;
+      }
+      if (index === activeIndex) return;
+      if (links[activeIndex]) {
+        links[activeIndex].classList.remove("is-active");
+        links[activeIndex].removeAttribute("aria-current");
+      }
+      var link = links[index];
+      link.classList.add("is-active");
+      link.setAttribute("aria-current", "location");
+      activeIndex = index;
+
+      var linkRect = link.getBoundingClientRect();
+      var listRect = list.getBoundingClientRect();
+      if (linkRect.top < listRect.top) list.scrollTop += linkRect.top - listRect.top;
+      else if (linkRect.bottom > listRect.bottom) list.scrollTop += linkRect.bottom - listRect.bottom;
+    }
+
+    function scheduleUpdate() {
+      if (headings.length && !frame) frame = window.requestAnimationFrame(update);
+    }
+
+    function unmount() {
+      close(false);
+      if (frame) window.cancelAnimationFrame(frame);
+      if (observer) observer.disconnect();
+      frame = 0;
+      observer = null;
+      headings = [];
+      links = [];
+      activeIndex = -1;
+      if (panel) panel.hidden = true;
+      if (button) button.hidden = true;
+      if (list) list.replaceChildren();
+      if (tools) tools.classList.remove("has-toc");
+    }
+
+    function mount() {
+      unmount();
+      var content = document.querySelector("#main-content [data-toc-content]");
+      if (!content || !panel || !list || !button || !tools) return;
+      headings = Array.from(content.querySelectorAll("h1, h2, h3, h4, h5, h6")).filter(function (heading) {
+        return heading.textContent.trim() !== "";
+      });
+      if (!headings.length) return;
+
+      var minLevel = Math.min.apply(null, headings.map(function (heading) { return Number(heading.tagName.slice(1)); }));
+      var fragment = document.createDocumentFragment();
+      headings.forEach(function (heading, index) {
+        if (!heading.id || document.getElementById(heading.id) !== heading) {
+          var suffix = index + 1;
+          var id = "nebula-heading-" + suffix;
+          while (document.getElementById(id)) id = "nebula-heading-" + (++suffix);
+          heading.id = id;
+        }
+        var item = document.createElement("li");
+        var link = document.createElement("a");
+        item.className = "article-toc-item";
+        link.className = "article-toc-link";
+        link.style.setProperty("--toc-depth", Number(heading.tagName.slice(1)) - minLevel);
+        link.href = "#" + encodeURIComponent(heading.id);
+        link.textContent = heading.textContent.replace(/\s+/g, " ").trim();
+        item.appendChild(link);
+        fragment.appendChild(item);
+        links.push(link);
+      });
+      list.appendChild(fragment);
+      panel.hidden = false;
+      button.hidden = false;
+      tools.classList.add("has-toc");
+      if ("ResizeObserver" in window) {
+        observer = new ResizeObserver(scheduleUpdate);
+        observer.observe(content);
+      }
+      update();
+    }
+
+    if (panel && list && button) {
+      button.addEventListener("click", function () {
+        if (panel.classList.contains("is-open")) {
+          close(false);
+          return;
+        }
+        panel.classList.add("is-open");
+        button.setAttribute("aria-expanded", "true");
+        button.setAttribute("aria-label", "关闭文章目录");
+        if (links[activeIndex]) links[activeIndex].focus({ preventScroll: true });
+      });
+      if (closeButton) closeButton.addEventListener("click", function () { close(true); });
+      list.addEventListener("click", function (event) {
+        var link = event.target.closest(".article-toc-link");
+        if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        var index = links.indexOf(link);
+        if (index < 0) return;
+        event.preventDefault();
+        close(true);
+        var hash = link.getAttribute("href");
+        var state = window.history.state;
+        if (state && state.source === "swup") {
+          state = Object.assign({}, state, { url: window.location.pathname + window.location.search + hash });
+        }
+        window.history.replaceState(state, "", hash);
+        window.scrollTo({
+          top: headings[index].getBoundingClientRect().top + window.scrollY - headingOffset(),
+          behavior: reducedMotion ? "auto" : "smooth"
+        });
+        scheduleUpdate();
+      });
+      document.addEventListener("pointerdown", function (event) {
+        if (!panel.contains(event.target) && !button.contains(event.target)) close(false);
+      });
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && panel.classList.contains("is-open")) close(true);
+      });
+      window.addEventListener("scroll", scheduleUpdate, { passive: true });
+      window.addEventListener("resize", function () {
+        if (wideScreen.matches) close(false);
+        scheduleUpdate();
+      });
+      document.addEventListener("load", scheduleUpdate, true);
+    }
+
+    return { mount: mount, unmount: unmount, close: close };
+  })();
+
   var updateScrollTools = (function scrollTools() {
     var tools = document.getElementById("scroll-tools");
     var topButton = document.getElementById("back-top");
@@ -216,7 +377,7 @@
         progress.textContent = text;
         progress.setAttribute("aria-valuenow", String(percentage));
       }
-      tools.classList.toggle("show", range > 1);
+      tools.classList.toggle("show", range > 1 || tools.classList.contains("has-toc"));
       topButton.disabled = position <= 1;
       bottomButton.disabled = range - position <= 1;
       scheduled = false;
@@ -378,6 +539,7 @@
     var menuButton = document.getElementById("menu-toggle");
     var searchButton = document.getElementById("search-toggle");
     var searchPanel = document.getElementById("search-panel");
+    articleToc.close(false);
     document.body.classList.remove("nav-open");
     if (menuButton) {
       menuButton.setAttribute("aria-expanded", "false");
@@ -489,6 +651,7 @@
   }
 
   function unmountPage() {
+    articleToc.unmount();
     if (revealObserver) {
       revealObserver.disconnect();
       revealObserver = null;
@@ -513,6 +676,7 @@
     }
   }
 
+  articleToc.mount();
   mountPage(false);
 
   if (typeof window.Swup === "function") {
@@ -535,6 +699,7 @@
 
     swup.hooks.on("visit:start", closePersistentUi);
     swup.hooks.before("content:replace", unmountPage);
+    swup.hooks.on("content:replace", articleToc.mount);
     swup.hooks.on("page:view", function () {
       mountPage(true);
       window.dispatchEvent(new CustomEvent("nebula:page-view", {

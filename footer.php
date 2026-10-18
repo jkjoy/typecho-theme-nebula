@@ -19,7 +19,21 @@
         <?php if (nebula_option('footerText')): ?><div class="footer-extra"><?php echo nebula_option('footerText'); ?></div><?php endif; ?>
     </div>
 </footer>
+<aside class="article-toc" id="article-toc" aria-label="文章目录" data-no-swup hidden>
+    <div class="article-toc-head">
+        <span>文章目录</span>
+        <button class="article-toc-close" id="toc-close" type="button" aria-label="关闭文章目录" title="关闭文章目录">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"></path></svg>
+        </button>
+    </div>
+    <nav aria-label="文章章节">
+        <ol class="article-toc-list" id="article-toc-list"></ol>
+    </nav>
+</aside>
 <div class="scroll-tools" id="scroll-tools" role="group" aria-label="页面滚动工具">
+    <button class="scroll-button toc-toggle" id="toc-toggle" type="button" hidden aria-expanded="false" aria-controls="article-toc" aria-label="打开文章目录" title="文章目录">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"></path></svg>
+    </button>
     <button class="scroll-button" id="back-top" type="button" aria-label="回到顶部" title="回到顶部">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
     </button>
