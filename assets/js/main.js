@@ -112,7 +112,7 @@
   }
 
   function imageFallbacks() {
-    document.querySelectorAll(".post-cover img, .comment-avatar img").forEach(function (image) {
+    document.querySelectorAll(".post-cover img, .comment-avatar img, .friend-post-avatar img").forEach(function (image) {
       function removeBrokenImage() {
         image.remove();
       }

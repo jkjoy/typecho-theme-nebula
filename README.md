@@ -13,6 +13,7 @@ Nebula 是一款面向 Typecho 的响应式博客主题，采用深空、星云�
 - 文章、独立页面、搜索、分类、标签和作者归档
 - 时间线归档、分类目录、标签云和友情链接页面
 - 友情链接页可配合 Enhancement 插件提交申请，支持待审核流程与 Turnstile 人机验证
+- 朋友文章独立页面，配合 Enhancement 插件通过 RSS 自动汇聚已审核友链的最近文章
 - 嵌套评论、评论回复、评论者等级与博主/博友身份标识
 - 评论仅支持纯文本或 Markdown，含 HTML 标签的新评论拒绝提交
 - macOS 风格代码块、语言标识、代码复制和长代码换行
@@ -73,7 +74,7 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 
 ## 创建独立页面
 
-导航中的归档、标签、友链和关于页面需要在 Typecho 后台创建对应的独立页面。页面缩略名必须与下表一致，主题会根据缩略名自动加载对应页面。
+导航中的归档、标签、友链、朋友文章和关于页面需要在 Typecho 后台创建对应的独立页面。页面缩略名必须与下表一致，主题会根据缩略名自动加载对应页面。
 
 | 页面 | 建议标题 | 缩略名 |
 | --- | --- | --- |
@@ -81,6 +82,7 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 | 分类目录 | 分类 | `categories` |
 | 标签云 | 标签 | `tags` |
 | 友情链接 | 友链 | `links` |
+| 朋友文章 | 朋友文章 | `friends` |
 | 说说动态 | 说说 | `memos` |
 | 关于页面 | 关于 | `about` |
 
@@ -142,6 +144,12 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 评论区会使用 `links.email` 与评论邮箱进行不区分大小写的精确匹配，匹配成功时显示“博友”标识。请在 Links 插件中为友链填写邮箱；邮箱只用于服务端匹配，不会输出到页面。
 
 启用 [Enhancement 插件](https://github.com/jkjoy/Enhancement) 后，友情链接页会自动显示申请表。站点名称和网址为必填，邮箱、图标和简介为选填；提交后进入 Enhancement 的待审核列表，审核通过后自动显示在友链页，通知设置沿用插件配置。主题支持插件的 Turnstile 人机验证及 Swup 页面切换。未启用插件或已开启的人机验证配置不完整时，页面保留留言申请说明。
+
+### 朋友文章
+
+升级并启用支持“朋友文章”功能的 Enhancement 插件，在插件设置中开启该功能，再创建缩略名为 `friends` 的独立页面；也可以在独立页面的自定义模板中选择“朋友文章”，使用其他缩略名。
+
+页面通过插件读取审核通过友链的 RSS 文章缓存，按发布时间展示标题、摘要、来源站点和作者，每页 20 篇。RSS 发现、更新与缓存由 Enhancement 管理，主题显示最近更新时间，分页使用 `friend_page` 参数，支持 Swup 导航和不启用 JavaScript 的访问。主题设置中的备用友链不参与订阅。插件未启用、版本不支持或功能关闭时显示尚未开启的提示；订阅暂时没有文章时显示等待更新的提示。
 
 非博主评论者的等级按同一邮箱累计的已审核评论数计算：1–4 条为 LV1、5–9 条为 LV2、10–19 条为 LV3、20–49 条为 LV4、50 条及以上为 LV5。博主发表的评论只在昵称后显示“博主”标识，不显示评论等级。
 
@@ -218,6 +226,7 @@ nebula/
 |-- page.php                 # 普通独立页面与特殊页面分发
 |-- page-archives.php        # 时间线归档
 |-- page-categories.php      # 分类目录
+|-- page-friends.php         # 朋友文章 RSS 聚合
 |-- page-links.php           # 友情链接
 |-- page-memos.php           # 接口驱动的说说动态
 |-- page-tags.php            # 标签云
@@ -229,7 +238,7 @@ nebula/
 
 ### 独立页面打开后没有使用专用布局
 
-检查页面缩略名是否严格使用 `archives`、`categories`、`tags`、`links` 或 `memos`，不要填写中文缩略名。说说页会从 `/api/v1/memos` 读取公开动态，每页默认加载 20 条。
+检查页面缩略名是否严格使用 `archives`、`categories`、`tags`、`links`、`friends` 或 `memos`，或在自定义模板中选择对应模板。说说页会从 `/api/v1/memos` 读取公开动态，每页默认加载 20 条。
 
 ### 文章列表没有封面图片
 

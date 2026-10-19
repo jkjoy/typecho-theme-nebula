@@ -502,6 +502,54 @@ function nebula_friend_link_application()
     }
 }
 
+function nebula_friend_posts($pageSize = 20, $page = 1)
+{
+    $pageSize = max(1, min(100, (int) $pageSize));
+    $page = is_scalar($page) ? max(1, (int) $page) : 1;
+    $result = [
+        'enabled' => false,
+        'items' => [],
+        'total' => 0,
+        'page' => 1,
+        'pageSize' => $pageSize,
+        'pages' => 0,
+        'updated' => 0,
+    ];
+
+    try {
+        $options = \Widget\Options::alloc();
+        if (!isset($options->plugins['activated']['Enhancement'])
+            || !class_exists('Enhancement_Plugin')
+            || !method_exists('Enhancement_Plugin', 'friendPosts')) {
+            return $result;
+        }
+
+        $feed = Enhancement_Plugin::friendPosts($pageSize, $page);
+        if (!is_array($feed) || empty($feed['enabled'])) {
+            return $result;
+        }
+
+        $result['enabled'] = true;
+        $result['items'] = is_array($feed['items'] ?? null) ? $feed['items'] : [];
+        $result['total'] = max(0, (int) ($feed['total'] ?? 0));
+        $result['pages'] = max(0, (int) ($feed['pages'] ?? 0));
+        $result['page'] = max(1, min((int) ($feed['page'] ?? $page), max(1, $result['pages'])));
+        $result['updated'] = max(0, (int) ($feed['updated'] ?? 0));
+
+        return $result;
+    } catch (\Throwable $error) {
+        // Keep the optional feed page available while the plugin is unavailable.
+        return $result;
+    }
+}
+
+function nebula_friend_posts_page_url($permalink, $page)
+{
+    $separator = strpos((string) $permalink, '?') === false ? '?' : '&';
+
+    return (string) $permalink . $separator . 'friend_page=' . max(1, (int) $page);
+}
+
 function nebula_friend_links()
 {
     $links = [];
