@@ -4,7 +4,7 @@
  *
  * @package Nebula
  * @author 老孙
- * @version 1.2.10
+ * @version 1.2.11
  * @link https://imsun.org
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;

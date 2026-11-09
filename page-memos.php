@@ -7,6 +7,17 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 $memos = nebula_memos(20, $this->request->get('memo-page', 1));
 $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$sourceIcons = [
+    'Web端' => '<rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8m-4-4v4"></path>',
+    '手机端' => '<rect x="6" y="2" width="12" height="20" rx="2"></rect><path d="M11 18h2"></path>',
+    'API' => '<path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"></path>',
+    'default' => '<circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z"></path>',
+];
+foreach (nebula_sns_services() as $service) {
+    if (in_array($service['label'], ['QQ', '微信'], true)) {
+        $sourceIcons[$service['label']] = '<path fill="currentColor" stroke="none" d="' . $service['path'] . '"></path>';
+    }
+}
 $this->need('header.php');
 ?>
 <main class="container page-memos" id="main-content">
@@ -41,6 +52,13 @@ $this->need('header.php');
                             <?php if ($published): ?><small><?php echo $escape($published->format('H:i')); ?></small><?php endif; ?>
                         </a>
                         <div class="memo-card">
+                            <?php if ($memo['tags']): ?>
+                                <div class="memo-tags">
+                                    <?php foreach ($memo['tags'] as $tag): ?>
+                                        <span class="memo-tag"><svg class="memo-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16M3 15h16M10 3 8 21M16 3l-2 18"></path></svg><span><?php echo $escape($tag); ?></span></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                             <?php if ($memo['content'] !== ''): ?><div class="memo-content"><?php echo $memo['content']; ?></div><?php endif; ?>
                             <?php if ($memo['media']): ?>
                                 <div class="memo-media" data-count="<?php echo min(count($memo['media']), 4); ?>">
@@ -58,11 +76,17 @@ $this->need('header.php');
                                 </div>
                             <?php endif; ?>
                             <footer class="memo-foot">
-                                <?php if ($memo['tags']): ?><div class="memo-tags"><?php foreach ($memo['tags'] as $tag): ?><span class="memo-tag"># <?php echo $escape($tag); ?></span><?php endforeach; ?></div><?php endif; ?>
                                 <?php if ($memo['location'] !== ''): ?>
-                                    <?php if ($memo['location_url'] !== ''): ?><a class="memo-location" href="<?php echo $escape($memo['location_url']); ?>" target="_blank" rel="noopener noreferrer" title="在地图中查看位置" data-no-swup>位置 · <?php echo $escape($memo['location']); ?></a><?php else: ?><span class="memo-location">位置 · <?php echo $escape($memo['location']); ?></span><?php endif; ?>
+                                    <?php if ($memo['location_url'] !== ''): ?>
+                                        <a class="memo-location" href="<?php echo $escape($memo['location_url']); ?>" target="_blank" rel="noopener noreferrer" title="在地图中查看位置" data-no-swup>
+                                    <?php else: ?>
+                                        <span class="memo-location">
+                                    <?php endif; ?>
+                                        <svg class="memo-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                                        <span><span class="sr-only">位置：</span><?php echo $escape($memo['location']); ?></span>
+                                    <?php if ($memo['location_url'] !== ''): ?></a><?php else: ?></span><?php endif; ?>
                                 <?php endif; ?>
-                                <span class="memo-source">来自 · <?php echo $escape($memo['source']); ?></span>
+                                <span class="memo-source"><svg class="memo-icon" viewBox="0 0 24 24" aria-hidden="true"><?php echo $sourceIcons[$memo['source']] ?? $sourceIcons['default']; ?></svg><span>来自 · <?php echo $escape($memo['source']); ?></span></span>
                             </footer>
                         </div>
                     </article>

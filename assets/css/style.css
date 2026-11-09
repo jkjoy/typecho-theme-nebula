@@ -1925,7 +1925,9 @@ html.js .reveal.visible {
 .memo-tags {
   display: flex;
   min-width: 0;
+  margin-bottom: 14px;
   flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 6px;
 }
 
@@ -1933,9 +1935,12 @@ html.js .reveal.visible {
 .memo-location,
 .memo-source {
   display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
   min-height: 28px;
   padding: 3px 9px;
   align-items: center;
+  gap: 6px;
   border-radius: 999px;
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.035);
@@ -1946,15 +1951,34 @@ html.js .reveal.visible {
 
 .memo-tag {
   color: var(--accent-2);
+  overflow-wrap: anywhere;
+}
+
+.memo-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .memo-location,
 .memo-source {
-  max-width: 100%;
-  min-width: 0;
   font-style: normal;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.memo-location > span,
+.memo-source > span {
+  min-width: 0;
+}
+
+.memo-source {
+  margin-left: auto;
 }
 
 .memo-location {
