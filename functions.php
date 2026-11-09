@@ -20,6 +20,13 @@ function themeConfig($form)
             _t('Favicon 地址'),
             _t('浏览器标签页图标地址，留空使用主题内置星云图标。')
         ),
+        new \Typecho\Widget\Helper\Form\Element\Radio(
+            'randomCoverEnabled',
+            ['0' => _t('关闭'), '1' => _t('开启')],
+            '0',
+            _t('本地随机封面'),
+            _t('默认关闭。开启后，文章列表优先从主题 assets/covers/ 目录随机选取封面；请将 JPG、JPEG、PNG、GIF、WebP、AVIF 或 SVG 图片直接放入该目录。目录无有效图片时使用原有封面逻辑。')
+        ),
         new \Typecho\Widget\Helper\Form\Element\Textarea(
             'friendLinks',
             null,
@@ -160,7 +167,7 @@ function themeFields($layout)
         null,
         null,
         _t('文章封面'),
-        _t('文章列表卡片使用的图片 URL；留空时自动使用正文第一张图片，正文无图时显示主题渐变封面。')
+        _t('文章列表卡片使用的图片 URL；留空时自动使用正文第一张图片，正文无图时显示主题渐变封面。启用本地随机封面时优先使用随机图片。')
     );
     $coverLabel = new \Typecho\Widget\Helper\Form\Element\Text(
         'coverLabel',
@@ -279,6 +286,25 @@ function nebula_site_stats()
     ];
 }
 
+function nebula_random_cover()
+{
+    static $covers = null;
+
+    if ($covers === null) {
+        $covers = [];
+        foreach (glob(__DIR__ . '/assets/covers/*') ?: [] as $file) {
+            if (is_file($file) && is_readable($file)
+                && preg_match('/\.(?:jpe?g|png|gif|webp|avif|svg)$/i', $file)) {
+                $covers[] = basename($file);
+            }
+        }
+    }
+
+    return $covers
+        ? nebula_asset_url('assets/covers/' . rawurlencode($covers[array_rand($covers)]), false)
+        : '';
+}
+
 function nebula_post_cover($archive)
 {
     $cover = '';
@@ -287,6 +313,13 @@ function nebula_post_cover($archive)
     if (isset($archive->fields)) {
         $cover = isset($archive->fields->cover) ? trim((string) $archive->fields->cover) : '';
         $label = isset($archive->fields->coverLabel) ? trim((string) $archive->fields->coverLabel) : '';
+    }
+
+    if (nebula_option('randomCoverEnabled', '0') === '1') {
+        $randomCover = nebula_random_cover();
+        if ($randomCover !== '') {
+            $cover = $randomCover;
+        }
     }
 
     if ($cover === '') {
