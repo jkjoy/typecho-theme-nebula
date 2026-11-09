@@ -1762,12 +1762,6 @@ html.js .reveal.visible {
   line-height: 1.4;
 }
 
-.memo-date small {
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 0.7rem;
-}
-
 .memo-date:hover {
   color: var(--accent-2);
 }
@@ -3553,12 +3547,7 @@ html[data-theme="light"] .site-footer {
     padding-top: 0;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
     font-size: 0.78rem;
-  }
-
-  .memo-date small {
-    margin-top: 0;
   }
 
   .memo-card {

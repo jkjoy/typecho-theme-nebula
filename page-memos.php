@@ -48,8 +48,7 @@ $this->need('header.php');
                     <?php $published = $memo['created'] > 0 ? new \Typecho\Date($memo['created']) : null; ?>
                     <article class="memo-item" id="memo-<?php echo $memo['mid']; ?>" style="--d:<?php echo min($index * .04, .24); ?>s">
                         <a class="memo-date" href="#memo-<?php echo $memo['mid']; ?>" title="<?php echo $published ? $escape($published->format('Y-m-d H:i')) : '时间未知'; ?>">
-                            <time<?php if ($published): ?> datetime="<?php echo $escape(gmdate('c', $memo['created'])); ?>"<?php endif; ?>><?php echo $published ? $escape($published->word()) : '时间未知'; ?></time>
-                            <?php if ($published): ?><small><?php echo $escape($published->format('H:i')); ?></small><?php endif; ?>
+                            <time<?php if ($published): ?> datetime="<?php echo $escape(gmdate('c', $memo['created'])); ?>"<?php endif; ?>><?php echo $escape(nebula_memo_time_label($memo['created'])); ?></time>
                         </a>
                         <div class="memo-card">
                             <?php if ($memo['tags']): ?>

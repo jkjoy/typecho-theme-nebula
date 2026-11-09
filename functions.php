@@ -582,6 +582,23 @@ function nebula_memo_content($content)
     return $html;
 }
 
+function nebula_memo_time_label($created)
+{
+    $created = (int) $created;
+    if ($created <= 0) return '时间未知';
+
+    // Compare Unix timestamps so the site's timezone does not alter the elapsed time.
+    $elapsed = \Typecho\Date::time() - $created;
+    $duration = abs($elapsed);
+    if ($duration < 60) return $elapsed >= 0 ? '刚刚' : '即将';
+
+    foreach ([31536000 => '年', 2592000 => '个月', 86400 => '天', 3600 => '小时', 60 => '分钟'] as $seconds => $unit) {
+        if ($duration >= $seconds) {
+            return (int) floor($duration / $seconds) . $unit . ($elapsed >= 0 ? '前' : '后');
+        }
+    }
+}
+
 function nebula_memos($pageSize = 20, $page = 1)
 {
     $pageSize = max(1, min(100, (int) $pageSize));
