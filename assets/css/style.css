@@ -1724,10 +1724,6 @@ html.js .reveal.visible {
   background: linear-gradient(to bottom, var(--accent-1), var(--accent-2) 55%, rgba(244, 114, 182, 0.18));
 }
 
-.memos-feed.is-loading:not(:has(.memo-skeleton)) {
-  opacity: 0.5;
-}
-
 .memo-item {
   position: relative;
   display: grid;
@@ -1854,6 +1850,7 @@ html.js .reveal.visible {
 
 .memo-photo {
   position: relative;
+  display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
@@ -1876,6 +1873,18 @@ html.js .reveal.visible {
 .memo-photo:hover img {
   filter: brightness(1.06);
   transform: scale(1.025);
+}
+
+.memo-photo-unavailable::after {
+  content: "图片暂时无法加载，打开原图";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  padding: 16px;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
 }
 
 .memo-media video {
@@ -1921,7 +1930,8 @@ html.js .reveal.visible {
 }
 
 .memo-tag,
-.memo-location {
+.memo-location,
+.memo-source {
   display: inline-flex;
   min-height: 28px;
   padding: 3px 9px;
@@ -1938,11 +1948,16 @@ html.js .reveal.visible {
   color: var(--accent-2);
 }
 
-.memo-location {
+.memo-location,
+.memo-source {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  font-style: normal;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.memo-location {
   transition: color 180ms ease-out, box-shadow 180ms ease-out;
 }
 
@@ -1970,7 +1985,8 @@ html.js .reveal.visible {
   border-radius: 8px;
 }
 
-.memos-pager .btn-ghost:disabled {
+.memos-pager .btn-ghost:disabled,
+.memos-pager .btn-ghost[aria-disabled="true"] {
   color: var(--text-muted);
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--border);
@@ -2011,51 +2027,6 @@ html.js .reveal.visible {
 .memos-message .btn-ghost {
   margin-top: 20px;
   border-radius: 8px;
-}
-
-.memo-skeleton::before {
-  background: var(--border-strong);
-  box-shadow: none;
-}
-
-.memo-skeleton .memo-date span,
-.memo-skeleton .memo-date small,
-.skeleton-line {
-  display: block;
-  height: 11px;
-  border-radius: 5px;
-  background: linear-gradient(90deg, var(--border) 20%, var(--surface-hover) 48%, var(--border) 76%);
-  background-size: 240% 100%;
-  animation: memo-shimmer 1.5s linear infinite;
-}
-
-.memo-skeleton .memo-date span {
-  width: 48px;
-}
-
-.memo-skeleton .memo-date small {
-  width: 34px;
-  margin-top: 8px;
-}
-
-.memo-skeleton .memo-card {
-  min-height: 132px;
-}
-
-.skeleton-line {
-  width: 100%;
-  margin-top: 15px;
-}
-
-.skeleton-line:first-child {
-  margin-top: 0;
-}
-
-.skeleton-line-short { width: 36%; }
-.skeleton-line-medium { width: 68%; }
-
-@keyframes memo-shimmer {
-  to { background-position: -240% 0; }
 }
 
 .memo-lightbox {
@@ -3568,15 +3539,6 @@ html[data-theme="light"] .site-footer {
 
   .memo-card {
     padding: 18px;
-  }
-
-  .memo-skeleton .memo-date {
-    min-height: 18px;
-  }
-
-  .memo-skeleton .memo-date span,
-  .memo-skeleton .memo-date small {
-    margin-top: 0;
   }
 
   .memo-lightbox {

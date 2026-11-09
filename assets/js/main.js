@@ -749,7 +749,6 @@
         return /\.(?:avif|gif|jpe?g|png|svg|webp|pdf|zip|rar|7z|tar|gz|mp3|mp4|ogg|webm|xml)$/i.test(path);
       },
       skipPopStateHandling: function (event) {
-        if (window.NebulaMemos && window.NebulaMemos.handlesPopState()) return true;
         return !event.state || event.state.source !== "swup";
       }
     });

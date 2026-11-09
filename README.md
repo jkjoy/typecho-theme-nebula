@@ -15,6 +15,7 @@ Nebula 是一款面向 Typecho 的响应式博客主题，采用深空、星云�
 - 时间线归档、分类目录、标签云和友情链接页面
 - 友情链接页可配合 Enhancement 插件提交申请，支持待审核流程与 Turnstile 人机验证
 - 朋友文章独立页面，配合 Enhancement 插件通过 RSS 自动汇聚已审核友链的最近文章
+- 瞬间动态直接读取 Enhancement 插件本地数据，支持定位、来源、媒体与分页
 - 嵌套评论、评论回复、评论者等级与博主/博友身份标识
 - 评论仅支持纯文本或 Markdown，含 HTML 标签的新评论拒绝提交
 - macOS 风格代码块、语言标识、代码复制和长代码换行
@@ -84,7 +85,7 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 | 标签云 | 标签 | `tags` |
 | 友情链接 | 友链 | `links` |
 | 朋友文章 | 朋友文章 | `friends` |
-| 说说动态 | 说说 | `memos` |
+| 瞬间动态 | 瞬间 | `memos` |
 | 关于页面 | 关于 | `about` |
 
 操作步骤：
@@ -95,6 +96,16 @@ git clone https://github.com/jkjoy/typecho-theme-nebula.git nebula
 4. 发布页面。
 
 归档页面会显示文章数、分类数、评论数和建站天数。建站天数从最早一篇已发布文章的发布时间开始计算。
+
+## 瞬间动态
+
+安装并启用 [Enhancement 插件](https://github.com/jkjoy/Enhancement) 的瞬间功能，然后创建缩略名为 `memos` 的独立页面，或选择“瞬间动态”自定义模板。
+
+页面直接读取当前 Typecho 数据库中由插件管理的 `moments` 表，不再使用 Memos API，也无需配置“说说接口地址”。没有相关数据表时，页面会提示先安装插件并提供获取链接；没有公开动态时显示空态。主题只读取数据，不自动创建或修改插件数据表。
+
+列表按发布记录倒序显示公开动态，每页 20 条，私密内容不参与列表和总数。发布时间按 Typecho 站点时区显示，与后台保持一致。定位优先显示保存的地址，只有坐标时显示经纬度；有完整有效坐标时可打开地图。来源显示 Web端、手机端、API、QQ 或微信。
+
+正文、标签、定位与来源在服务端直接输出，支持图片、视频、音频及附件。分页无需 JavaScript，启用 JavaScript 后保留图片相册预览与 Swup 页面导航。
 
 ## 主题设置
 
@@ -240,7 +251,7 @@ nebula/
 |-- page-categories.php      # 分类目录
 |-- page-friends.php         # 朋友文章 RSS 聚合
 |-- page-links.php           # 友情链接
-|-- page-memos.php           # 接口驱动的说说动态
+|-- page-memos.php           # 直接读取插件数据库的瞬间动态
 |-- page-tags.php            # 标签云
 |-- post.php                 # 文章详情
 `-- screenshot.png           # Typecho 主题预览图
@@ -250,7 +261,7 @@ nebula/
 
 ### 独立页面打开后没有使用专用布局
 
-检查页面缩略名是否严格使用 `archives`、`categories`、`tags`、`links`、`friends` 或 `memos`，或在自定义模板中选择对应模板。说说页会从 `/api/v1/memos` 读取公开动态，每页默认加载 20 条。
+检查页面缩略名是否严格使用 `archives`、`categories`、`tags`、`links`、`friends` 或 `memos`，或在自定义模板中选择对应模板。瞬间页需安装 Enhancement 插件的瞬间功能，并直接读取本地公开动态，每页默认加载 20 条。
 
 ### 文章列表没有封面图片
 

@@ -1,10 +1,12 @@
 <?php
 /**
- * 说说动态
+ * 瞬间动态
  *
  * @package custom
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+$memos = nebula_memos(20, $this->request->get('memo-page', 1));
+$escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $this->need('header.php');
 ?>
 <main class="container page-memos" id="main-content">
@@ -14,37 +16,74 @@ $this->need('header.php');
         <p>捕捉日常里的微光，收藏此刻的心情</p>
     </header>
 
-    <section class="memos-layout reveal" data-memos-endpoint="<?php echo htmlspecialchars(nebula_option('memosEndpoint', '/api/v1/memos'), ENT_QUOTES, 'UTF-8'); ?>" data-memos-limit="20" aria-labelledby="memos-title">
-        <h2 class="sr-only" id="memos-title">说说动态</h2>
-        <div class="memos-toolbar">
-            <span class="memos-toolbar-label"><span class="memos-live-dot" aria-hidden="true"></span>最近动态</span>
-            <span class="memos-status" data-memos-status role="status" aria-live="polite">正在接收信号...</span>
-        </div>
+    <section class="memos-layout reveal" data-memos aria-labelledby="memos-title">
+        <h2 class="sr-only" id="memos-title">瞬间动态</h2>
+        <?php if ($memos['available'] && !$memos['error']): ?>
+            <div class="memos-toolbar">
+                <span class="memos-toolbar-label"><span class="memos-live-dot" aria-hidden="true"></span>最近动态</span>
+                <span class="memos-status" role="status">共 <?php echo $memos['total']; ?> 条动态</span>
+            </div>
+        <?php endif; ?>
 
-        <div class="memos-feed is-loading" data-memos-list aria-busy="true">
-            <?php for ($skeleton = 0; $skeleton < 3; $skeleton++): ?>
-            <article class="memo-item memo-skeleton" aria-hidden="true">
-                <div class="memo-date"><span></span><small></small></div>
-                <div class="memo-card"><span class="skeleton-line skeleton-line-short"></span><span class="skeleton-line"></span><span class="skeleton-line skeleton-line-medium"></span></div>
-            </article>
-            <?php endfor; ?>
-        </div>
+        <?php if ($memos['error']): ?>
+            <div class="memos-message"><h2>瞬间暂时无法读取</h2><p>请检查 Enhancement 插件是否已更新并正常启用，然后刷新页面重试。</p></div>
+        <?php elseif (!$memos['available']): ?>
+            <div class="memos-message"><h2>请先安装瞬间插件</h2><p>安装并启用 Enhancement 插件的瞬间功能后，即可在这里展示你发布的公开动态。</p><a class="btn-ghost" href="https://github.com/jkjoy/Enhancement" target="_blank" rel="noopener noreferrer" data-no-swup>获取 Enhancement 插件</a></div>
+        <?php elseif (!$memos['items']): ?>
+            <div class="memos-message"><h2>等待新的瞬间</h2><p>还没有公开动态，新的念头出现后会在这里与你见面。</p></div>
+        <?php else: ?>
+            <div class="memos-feed">
+                <?php foreach ($memos['items'] as $index => $memo): ?>
+                    <?php $published = $memo['created'] > 0 ? new \Typecho\Date($memo['created']) : null; ?>
+                    <article class="memo-item" id="memo-<?php echo $memo['mid']; ?>" style="--d:<?php echo min($index * .04, .24); ?>s">
+                        <a class="memo-date" href="#memo-<?php echo $memo['mid']; ?>" title="<?php echo $published ? $escape($published->format('Y-m-d H:i')) : '时间未知'; ?>">
+                            <time<?php if ($published): ?> datetime="<?php echo $escape(gmdate('c', $memo['created'])); ?>"<?php endif; ?>><?php echo $published ? $escape($published->word()) : '时间未知'; ?></time>
+                            <?php if ($published): ?><small><?php echo $escape($published->format('H:i')); ?></small><?php endif; ?>
+                        </a>
+                        <div class="memo-card">
+                            <?php if ($memo['content'] !== ''): ?><div class="memo-content"><?php echo $memo['content']; ?></div><?php endif; ?>
+                            <?php if ($memo['media']): ?>
+                                <div class="memo-media" data-count="<?php echo min(count($memo['media']), 4); ?>">
+                                    <?php foreach ($memo['media'] as $mediaIndex => $media): ?>
+                                        <?php if (in_array($media['type'], ['PHOTO', 'IMAGE'], true)): ?>
+                                            <a class="memo-photo" href="<?php echo $escape($media['url']); ?>" target="_blank" rel="noopener noreferrer" aria-label="预览图片" data-no-swup><img src="<?php echo $escape($media['url']); ?>" alt="瞬间 <?php echo $memo['mid']; ?> 的第 <?php echo $mediaIndex + 1; ?> 张配图" loading="lazy"></a>
+                                        <?php elseif ($media['type'] === 'VIDEO'): ?>
+                                            <video src="<?php echo $escape($media['url']); ?>" controls preload="metadata"></video>
+                                        <?php elseif ($media['type'] === 'AUDIO'): ?>
+                                            <audio src="<?php echo $escape($media['url']); ?>" controls preload="metadata"></audio>
+                                        <?php else: ?>
+                                            <a class="memo-attachment" href="<?php echo $escape($media['url']); ?>" target="_blank" rel="noopener noreferrer" data-no-swup>查看附件</a>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            <footer class="memo-foot">
+                                <?php if ($memo['tags']): ?><div class="memo-tags"><?php foreach ($memo['tags'] as $tag): ?><span class="memo-tag"># <?php echo $escape($tag); ?></span><?php endforeach; ?></div><?php endif; ?>
+                                <?php if ($memo['location'] !== ''): ?>
+                                    <?php if ($memo['location_url'] !== ''): ?><a class="memo-location" href="<?php echo $escape($memo['location_url']); ?>" target="_blank" rel="noopener noreferrer" title="在地图中查看位置" data-no-swup>位置 · <?php echo $escape($memo['location']); ?></a><?php else: ?><span class="memo-location">位置 · <?php echo $escape($memo['location']); ?></span><?php endif; ?>
+                                <?php endif; ?>
+                                <span class="memo-source">来自 · <?php echo $escape($memo['source']); ?></span>
+                            </footer>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
-        <noscript><div class="memos-message"><h2>需要启用 JavaScript</h2><p>说说内容通过接口动态加载，请启用 JavaScript 后查看。</p></div></noscript>
-
-        <nav class="memos-pager" data-memos-pager aria-label="说说分页" hidden>
-            <button class="btn-ghost" type="button" data-memos-prev>上一页</button>
-            <span data-memos-page>第 1 页</span>
-            <button class="btn-ghost" type="button" data-memos-next>下一页</button>
-        </nav>
+        <?php if (!$memos['error'] && $memos['pages'] > 1): ?>
+            <nav class="memos-pager" aria-label="瞬间分页">
+                <?php if ($memos['page'] > 1): ?><a class="btn-ghost" href="<?php echo $escape(nebula_memos_page_url($this->permalink, $memos['page'] - 1)); ?>" rel="prev">上一页</a><?php else: ?><span class="btn-ghost" aria-disabled="true">上一页</span><?php endif; ?>
+                <span aria-current="page">第 <?php echo $memos['page']; ?> / <?php echo $memos['pages']; ?> 页</span>
+                <?php if ($memos['page'] < $memos['pages']): ?><a class="btn-ghost" href="<?php echo $escape(nebula_memos_page_url($this->permalink, $memos['page'] + 1)); ?>" rel="next">下一页</a><?php else: ?><span class="btn-ghost" aria-disabled="true">下一页</span><?php endif; ?>
+            </nav>
+        <?php endif; ?>
     </section>
 
     <dialog class="memo-lightbox" data-memo-lightbox aria-label="图片预览">
         <button class="memo-lightbox-close" type="button" data-lightbox-close aria-label="关闭图片预览">&times;</button>
         <button class="memo-lightbox-nav memo-lightbox-prev" type="button" data-lightbox-prev aria-label="上一张图片">&#8249;</button>
-        <figure><img data-lightbox-image src="" alt=""><figcaption data-lightbox-caption></figcaption></figure>
+        <figure><img data-lightbox-image alt=""><figcaption data-lightbox-caption></figcaption></figure>
         <button class="memo-lightbox-nav memo-lightbox-next" type="button" data-lightbox-next aria-label="下一张图片">&#8250;</button>
     </dialog>
 </main>
-
 <?php $this->need('footer.php'); ?>

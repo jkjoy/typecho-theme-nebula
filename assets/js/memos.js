@@ -4,577 +4,103 @@
   var active = null;
 
   function unmount() {
-    if (active) active.unmount();
-  }
-
-  function handlesPopState() {
-    return !!active && active.handlesPopState();
+    if (active) active();
   }
 
   function mount() {
     unmount();
-    var root = document.querySelector("[data-memos-endpoint]");
-    if (!root || !window.fetch) return;
+    var root = document.querySelector("[data-memos]");
+    if (!root) return;
 
-  var list = root.querySelector("[data-memos-list]");
-  var status = root.querySelector("[data-memos-status]");
-  var pager = root.querySelector("[data-memos-pager]");
-  var pageLabel = root.querySelector("[data-memos-page]");
-  var prevButton = root.querySelector("[data-memos-prev]");
-  var nextButton = root.querySelector("[data-memos-next]");
-  var lightbox = document.querySelector("[data-memo-lightbox]");
-  var endpoint = root.dataset.memosEndpoint;
-  var limit = Math.min(100, Math.max(1, parseInt(root.dataset.memosLimit, 10) || 20));
-  var query = new URLSearchParams(window.location.search);
-  var currentPage = Math.max(1, parseInt(query.get("memo-page"), 10) || 1);
-  var pagePath = window.location.pathname;
-  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var mounted = true;
-  var controller = null;
-  var countController = null;
-  var requestId = 0;
-  var totalCount = null;
-  var gallery = [];
-  var galleryIndex = 0;
+    var lightbox = document.querySelector("[data-memo-lightbox]");
+    var image = lightbox && lightbox.querySelector("[data-lightbox-image]");
+    var caption = lightbox && lightbox.querySelector("[data-lightbox-caption]");
+    var previous = lightbox && lightbox.querySelector("[data-lightbox-prev]");
+    var next = lightbox && lightbox.querySelector("[data-lightbox-next]");
+    var close = lightbox && lightbox.querySelector("[data-lightbox-close]");
+    var canOpen = lightbox && typeof lightbox.showModal === "function" && image && caption && previous && next && close;
+    var listeners = [];
+    var gallery = [];
+    var galleryIndex = 0;
 
-  function safeUrl(value) {
-    if (typeof value !== "string" || !value.trim()) return "";
-    try {
-      var parsed = new URL(value, window.location.origin);
-      return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : "";
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function linkifyText(container) {
-    var urlPattern = /https?:\/\/[^\s<>"'「」『』“”]+/gi;
-    var trailingPattern = /[.,!?;:，。！？；：)\]}>）】》]+$/;
-    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-    var nodes = [];
-    var node;
-
-    while ((node = walker.nextNode())) {
-      if (!node.parentElement || node.parentElement.closest("a, code, pre")) continue;
-      urlPattern.lastIndex = 0;
-      if (urlPattern.test(node.nodeValue)) nodes.push(node);
+    function listen(target, type, handler) {
+      target.addEventListener(type, handler);
+      listeners.push(function () { target.removeEventListener(type, handler); });
     }
 
-    nodes.forEach(function (textNode) {
-      var text = textNode.nodeValue;
-      var fragment = document.createDocumentFragment();
-      var cursor = 0;
-      var match;
-      urlPattern.lastIndex = 0;
+    function closeLightbox() {
+      if (lightbox && lightbox.open) lightbox.close();
+      if (image) image.removeAttribute("src");
+      gallery = [];
+    }
 
-      while ((match = urlPattern.exec(text))) {
-        var raw = match[0];
-        var linkText = raw;
-        var trailing = "";
-        var nextCharacter = text.charAt(urlPattern.lastIndex);
+    function updateLightbox() {
+      var link = gallery[galleryIndex];
+      var thumbnail = link.querySelector("img");
+      image.src = link.href;
+      image.alt = thumbnail ? thumbnail.alt : "瞬间配图";
+      caption.textContent = (galleryIndex + 1) + " / " + gallery.length;
+      previous.hidden = gallery.length < 2;
+      next.hidden = gallery.length < 2;
+    }
 
-        if (/From$/i.test(linkText) && /[「『“]/.test(nextCharacter)) {
-          linkText = linkText.slice(0, -4);
-          trailing = raw.slice(-4);
-        }
-        var punctuation = linkText.match(trailingPattern);
-        if (punctuation) {
-          linkText = linkText.slice(0, -punctuation[0].length);
-          trailing = punctuation[0] + trailing;
-        }
+    function moveLightbox(step) {
+      if (!gallery.length) return;
+      galleryIndex = (galleryIndex + step + gallery.length) % gallery.length;
+      updateLightbox();
+    }
 
-        var href = safeUrl(linkText);
-        if (!href) continue;
-        fragment.appendChild(document.createTextNode(text.slice(cursor, match.index)));
-        var link = document.createElement("a");
-        link.href = href;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer nofollow";
-        link.textContent = linkText;
-        fragment.appendChild(link);
-        if (trailing) fragment.appendChild(document.createTextNode(trailing));
-        cursor = match.index + raw.length;
+    root.querySelectorAll("a.memo-photo[href] img").forEach(function (thumbnail) {
+      function showFallback() {
+        var link = thumbnail.closest("a.memo-photo");
+        thumbnail.hidden = true;
+        link.classList.add("memo-photo-unavailable");
+        link.setAttribute("aria-label", "图片暂时无法加载，点击打开原图");
       }
-
-      if (cursor) {
-        fragment.appendChild(document.createTextNode(text.slice(cursor)));
-        textNode.replaceWith(fragment);
-      }
+      listen(thumbnail, "error", showFallback);
+      if (thumbnail.complete && thumbnail.naturalWidth === 0) showFallback();
     });
-  }
 
-  function sanitizeContent(value) {
-    var parser = new DOMParser();
-    var source = parser.parseFromString(typeof value === "string" ? value : "", "text/html");
-    var allowed = ["P", "BR", "STRONG", "B", "EM", "I", "A", "UL", "OL", "LI", "BLOCKQUOTE", "CODE", "PRE", "DEL", "S", "MARK"];
-    var discarded = ["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "FORM", "INPUT", "BUTTON", "SVG", "MATH", "TEMPLATE"];
-
-    Array.from(source.body.querySelectorAll("*")).reverse().forEach(function (element) {
-      if (discarded.indexOf(element.tagName) !== -1) {
-        element.remove();
-        return;
-      }
-      if (allowed.indexOf(element.tagName) === -1) {
-        element.replaceWith.apply(element, Array.from(element.childNodes));
-        return;
-      }
-
-      var href = element.tagName === "A" ? safeUrl(element.getAttribute("href")) : "";
-      Array.from(element.attributes).forEach(function (attribute) {
-        element.removeAttribute(attribute.name);
+    if (canOpen) {
+      listen(root, "click", function (event) {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        var link = event.target.closest("a.memo-photo[href]");
+        if (!link || !root.contains(link) || link.classList.contains("memo-photo-unavailable")) return;
+        var media = link.closest(".memo-media");
+        if (!media) return;
+        gallery = Array.from(media.querySelectorAll("a.memo-photo[href]")).filter(function (item) {
+          return !item.classList.contains("memo-photo-unavailable");
+        });
+        galleryIndex = gallery.indexOf(link);
+        if (galleryIndex < 0) return;
+        event.preventDefault();
+        updateLightbox();
+        lightbox.showModal();
       });
-      if (element.tagName === "A" && href) {
-        element.href = href;
-        element.target = "_blank";
-        element.rel = "noopener noreferrer nofollow";
-      } else if (element.tagName === "A") {
-        element.replaceWith.apply(element, Array.from(element.childNodes));
-      }
-    });
-
-    var output = document.createElement("div");
-    Array.from(source.body.childNodes).forEach(function (node) {
-      output.appendChild(node.cloneNode(true));
-    });
-    linkifyText(output);
-    return output;
-  }
-
-  function timeParts(value) {
-    var raw = typeof value === "string" ? value.trim() : "";
-    var normalized = raw.replace(" ", "T");
-    // The API returns Beijing time without an offset; preserve explicit timezones.
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)) normalized += "+08:00";
-    var date = new Date(normalized);
-    if (!raw || Number.isNaN(date.getTime())) {
-      return { date: "此刻", clock: "", datetime: "", title: raw || "时间未知" };
-    }
-    var now = new Date();
-    var elapsed = now.getTime() - date.getTime();
-    var timeZone = "Asia/Shanghai";
-    var calendarFormat = new Intl.DateTimeFormat("en-US", { timeZone: timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
-    function calendarParts(value) {
-      var parts = {};
-      calendarFormat.formatToParts(value).forEach(function (part) { parts[part.type] = part.value; });
-      return parts;
-    }
-    var today = calendarParts(now);
-    var posted = calendarParts(date);
-    var dayStart = Date.UTC(Number(today.year), Number(today.month) - 1, Number(today.day));
-    var dateStart = Date.UTC(Number(posted.year), Number(posted.month) - 1, Number(posted.day));
-    var calendarDays = Math.round((dayStart - dateStart) / 86400000);
-    var label = "";
-    var detail = new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
-
-    if (elapsed >= -300000 && elapsed < 60000) {
-      label = "刚刚";
-    } else if (elapsed >= 0 && elapsed < 3600000) {
-      label = Math.floor(elapsed / 60000) + " 分钟前";
-    } else if (elapsed >= 0 && elapsed < 86400000) {
-      label = Math.floor(elapsed / 3600000) + " 小时前";
-    } else if (calendarDays === 1) {
-      label = "昨天";
-    } else if (calendarDays > 1 && calendarDays < 7) {
-      label = calendarDays + " 天前";
-    } else if (posted.year === today.year) {
-      label = new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
-    } else {
-      label = posted.year;
-      detail = new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, month: "2-digit", day: "2-digit" }).format(date).replace("/", ".");
+      listen(close, "click", closeLightbox);
+      listen(previous, "click", function () { moveLightbox(-1); });
+      listen(next, "click", function () { moveLightbox(1); });
+      listen(lightbox, "click", function (event) {
+        if (event.target === lightbox) closeLightbox();
+      });
+      listen(lightbox, "keydown", function (event) {
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          event.preventDefault();
+          moveLightbox(event.key === "ArrowLeft" ? -1 : 1);
+        }
+      });
+      listen(lightbox, "close", function () {
+        image.removeAttribute("src");
+        gallery = [];
+      });
     }
 
-    return {
-      date: label,
-      clock: detail,
-      datetime: date.toISOString(),
-      title: new Intl.DateTimeFormat("zh-CN", { timeZone: timeZone, year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
+    active = function () {
+      listeners.forEach(function (remove) { remove(); });
+      closeLightbox();
+      active = null;
     };
   }
 
-  function makeTag(value) {
-    var tag = document.createElement("span");
-    tag.className = "memo-tag";
-    tag.textContent = "# " + String(value);
-    return tag;
-  }
-
-  function makeLocation(latitude, longitude) {
-    var lat = parseFloat(latitude);
-    var lon = parseFloat(longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-    var link = document.createElement("a");
-    link.className = "memo-location";
-    link.href = "https://www.openstreetmap.org/?mlat=" + encodeURIComponent(lat) + "&mlon=" + encodeURIComponent(lon) + "#map=14/" + encodeURIComponent(lat) + "/" + encodeURIComponent(lon);
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = "在地图中查看位置";
-    link.textContent = "位置 " + lat.toFixed(4) + ", " + lon.toFixed(4);
-    return link;
-  }
-
-  function openLightbox(items, index) {
-    if (!lightbox || !items.length) return;
-    gallery = items;
-    galleryIndex = index;
-    updateLightbox();
-    if (typeof lightbox.showModal === "function") lightbox.showModal();
-    else lightbox.setAttribute("open", "");
-  }
-
-  function updateLightbox() {
-    if (!lightbox || !gallery.length) return;
-    var item = gallery[galleryIndex];
-    var image = lightbox.querySelector("[data-lightbox-image]");
-    var caption = lightbox.querySelector("[data-lightbox-caption]");
-    image.src = item.url;
-    image.alt = item.alt;
-    caption.textContent = (galleryIndex + 1) + " / " + gallery.length;
-    lightbox.querySelector("[data-lightbox-prev]").hidden = gallery.length < 2;
-    lightbox.querySelector("[data-lightbox-next]").hidden = gallery.length < 2;
-  }
-
-  function moveLightbox(step) {
-    if (!gallery.length) return;
-    galleryIndex = (galleryIndex + step + gallery.length) % gallery.length;
-    updateLightbox();
-  }
-
-  function makeMedia(items, memoId) {
-    var validItems = Array.isArray(items) ? items.map(function (item, index) {
-      return {
-        type: String(item && item.type || "").toUpperCase(),
-        url: safeUrl(item && item.url),
-        alt: "说说 " + memoId + " 的第 " + (index + 1) + " 张配图"
-      };
-    }).filter(function (item) { return item.url; }) : [];
-    if (!validItems.length) return null;
-
-    var media = document.createElement("div");
-    media.className = "memo-media";
-    media.dataset.count = String(Math.min(validItems.length, 4));
-    var photos = validItems.filter(function (item) { return item.type === "PHOTO" || item.type === "IMAGE"; });
-
-    validItems.forEach(function (item) {
-      if (item.type === "PHOTO" || item.type === "IMAGE") {
-        var button = document.createElement("button");
-        var image = document.createElement("img");
-        button.type = "button";
-        button.className = "memo-photo";
-        button.setAttribute("aria-label", "预览图片");
-        image.src = item.url;
-        image.alt = item.alt;
-        image.loading = "lazy";
-        image.addEventListener("error", function () {
-          button.remove();
-          if (!media.children.length) media.remove();
-        }, { once: true });
-        button.addEventListener("click", function () {
-          openLightbox(photos, photos.indexOf(item));
-        });
-        button.appendChild(image);
-        media.appendChild(button);
-      } else if (item.type === "VIDEO") {
-        var video = document.createElement("video");
-        video.src = item.url;
-        video.controls = true;
-        video.preload = "metadata";
-        media.appendChild(video);
-      } else if (item.type === "AUDIO") {
-        var audio = document.createElement("audio");
-        audio.src = item.url;
-        audio.controls = true;
-        audio.preload = "metadata";
-        media.appendChild(audio);
-      } else {
-        var fileLink = document.createElement("a");
-        fileLink.className = "memo-attachment";
-        fileLink.href = item.url;
-        fileLink.target = "_blank";
-        fileLink.rel = "noopener noreferrer";
-        fileLink.textContent = "查看附件";
-        media.appendChild(fileLink);
-      }
-    });
-    return media;
-  }
-
-  function renderMemo(memo, index) {
-    var id = String(memo.id || (currentPage + "-" + index));
-    var time = timeParts(memo.time);
-    var article = document.createElement("article");
-    var date = document.createElement("a");
-    var card = document.createElement("div");
-    var content = sanitizeContent(memo.content);
-    var media = makeMedia(memo.media, id);
-    var foot = document.createElement("footer");
-    var tags = Array.isArray(memo.tags) ? memo.tags.filter(function (tag) { return String(tag).trim(); }) : [];
-    var location = makeLocation(memo.latitude, memo.longitude);
-
-    article.className = "memo-item";
-    article.id = "memo-" + id.replace(/[^a-zA-Z0-9_-]/g, "-");
-    article.style.setProperty("--d", Math.min(index * 0.04, 0.24) + "s");
-    date.className = "memo-date";
-    date.href = "#" + article.id;
-    date.title = time.title;
-    date.innerHTML = "<time></time><small></small>";
-    date.querySelector("time").dateTime = time.datetime;
-    date.querySelector("time").textContent = time.date;
-    date.querySelector("small").textContent = time.clock;
-    card.className = "memo-card";
-    content.className = "memo-content";
-    card.appendChild(content);
-    if (!content.textContent.trim() && !content.children.length) content.hidden = true;
-    if (media) card.appendChild(media);
-
-    if (tags.length || location) {
-      foot.className = "memo-foot";
-      var tagList = document.createElement("div");
-      tagList.className = "memo-tags";
-      tags.forEach(function (tag) { tagList.appendChild(makeTag(tag)); });
-      if (tags.length) foot.appendChild(tagList);
-      if (location) foot.appendChild(location);
-      card.appendChild(foot);
-    }
-
-    article.appendChild(date);
-    article.appendChild(card);
-    return article;
-  }
-
-  function renderMessage(title, message, retry) {
-    var box = document.createElement("div");
-    var heading = document.createElement("h2");
-    var detail = document.createElement("p");
-    box.className = "memos-message";
-    heading.textContent = title;
-    detail.textContent = message;
-    box.appendChild(heading);
-    box.appendChild(detail);
-    if (retry) {
-      var button = document.createElement("button");
-      button.className = "btn-ghost";
-      button.type = "button";
-      button.textContent = "重新加载";
-      button.addEventListener("click", function () { loadPage(currentPage, false); });
-      box.appendChild(button);
-    }
-    list.replaceChildren(box);
-  }
-
-  function setQueryPage(page, replace) {
-    var url = new URL(window.location.href);
-    var state = Object.assign({}, window.history.state, { memoPage: page, nebulaMemos: true });
-    if (page === 1) url.searchParams.delete("memo-page");
-    else url.searchParams.set("memo-page", String(page));
-    window.history[replace ? "replaceState" : "pushState"](state, "", url);
-  }
-
-  function setLoading(loading) {
-    root.classList.toggle("is-fetching", loading);
-    list.classList.toggle("is-loading", loading);
-    list.setAttribute("aria-busy", String(loading));
-    if (loading) {
-      prevButton.disabled = true;
-      nextButton.disabled = true;
-    }
-  }
-
-  function showTotalCount() {
-    status.textContent = totalCount === null ? "正在统计动态..." : "共 " + totalCount + " 条动态";
-  }
-
-  var countCacheKey = "nebula-memos-count:" + endpoint;
-  var countCacheTtl = 10 * 60 * 1000;
-
-  function readCachedCount() {
-    try {
-      var cached = JSON.parse(window.sessionStorage.getItem(countCacheKey) || "null");
-      if (cached && typeof cached.count === "number" && Date.now() - cached.time < countCacheTtl) return cached.count;
-    } catch (error) {
-      // Storage may be unavailable in private browsing.
-    }
-    return null;
-  }
-
-  function writeCachedCount(count) {
-    try {
-      window.sessionStorage.setItem(countCacheKey, JSON.stringify({ count: count, time: Date.now() }));
-    } catch (error) {
-      // Ignore storage failures; the count is only a convenience.
-    }
-  }
-
-  function countMemos() {
-    var countLimit = 100;
-    var page = 1;
-    var count = 0;
-
-    // Counting requires walking every page of the API, so reuse a recent
-    // result instead of repeating it on each visit to the memos page.
-    var cachedCount = readCachedCount();
-    if (cachedCount !== null) {
-      totalCount = cachedCount;
-      showTotalCount();
-      return;
-    }
-
-    countController = "AbortController" in window ? new AbortController() : null;
-
-    function loadCountPage() {
-      var url = new URL(endpoint, window.location.origin);
-      url.searchParams.set("limit", String(countLimit));
-      url.searchParams.set("page", String(page));
-
-      var options = { headers: { Accept: "application/json" }, credentials: "same-origin" };
-      if (countController) options.signal = countController.signal;
-      return fetch(url.href, options).then(function (response) {
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        return response.json();
-      }).then(function (data) {
-        if (!mounted) return;
-        if (!Array.isArray(data)) throw new Error("INVALID_RESPONSE");
-        count += data.filter(function (memo) {
-          return memo && (!memo.status || String(memo.status).toLowerCase() === "public");
-        }).length;
-        if (data.length === countLimit) {
-          page += 1;
-          return loadCountPage();
-        }
-        totalCount = count;
-        writeCachedCount(count);
-        showTotalCount();
-      });
-    }
-
-    showTotalCount();
-    loadCountPage().catch(function (error) {
-      if (!mounted || (error && error.name === "AbortError")) return;
-      status.textContent = "总数暂不可用";
-    });
-  }
-
-  function loadPage(page, updateHistory) {
-    if (controller) controller.abort();
-    controller = "AbortController" in window ? new AbortController() : null;
-    requestId += 1;
-    var activeRequest = requestId;
-    currentPage = Math.max(1, page);
-    if (updateHistory) setQueryPage(currentPage, false);
-    setLoading(true);
-    showTotalCount();
-    pager.hidden = true;
-
-    var url = new URL(endpoint, window.location.origin);
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("page", String(currentPage));
-    var options = { headers: { Accept: "application/json" }, credentials: "same-origin" };
-    if (controller) options.signal = controller.signal;
-
-    fetch(url.href, options).then(function (response) {
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      return response.json();
-    }).then(function (data) {
-      if (!mounted || activeRequest !== requestId) return;
-      if (!Array.isArray(data)) throw new Error("INVALID_RESPONSE");
-      var publicMemos = data.filter(function (memo) {
-        return memo && (!memo.status || String(memo.status).toLowerCase() === "public");
-      });
-      var fragment = document.createDocumentFragment();
-      publicMemos.forEach(function (memo, index) { fragment.appendChild(renderMemo(memo, index)); });
-      list.replaceChildren(fragment);
-      if (!publicMemos.length) renderMessage("这一页很安静", currentPage > 1 ? "没有更多说说了，可以返回上一页。" : "新的念头出现后，会在这里与你见面。", false);
-
-      showTotalCount();
-      pageLabel.textContent = "第 " + currentPage + " 页";
-      prevButton.disabled = currentPage <= 1;
-      nextButton.disabled = data.length < limit;
-      pager.hidden = currentPage === 1 && data.length < limit;
-    }).catch(function (error) {
-      if (!mounted || (error && error.name === "AbortError")) return;
-      renderMessage("暂时无法读取说说", "请检查网络连接或说说接口是否可用。", true);
-      status.textContent = "加载失败";
-      pageLabel.textContent = "第 " + currentPage + " 页";
-      prevButton.disabled = currentPage <= 1;
-      nextButton.disabled = true;
-      pager.hidden = currentPage <= 1;
-    }).finally(function () {
-      if (!mounted || activeRequest !== requestId) return;
-      setLoading(false);
-    });
-  }
-
-  function previousPage() {
-    if (currentPage <= 1) return;
-    loadPage(currentPage - 1, true);
-    root.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-  }
-
-  function nextPage() {
-    loadPage(currentPage + 1, true);
-    root.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-  }
-
-  function onPopState() {
-    if (!handlesCurrentPopState()) return;
-    var params = new URLSearchParams(window.location.search);
-    loadPage(Math.max(1, parseInt(params.get("memo-page"), 10) || 1), false);
-  }
-
-  function handlesCurrentPopState() {
-    return mounted && window.location.pathname === pagePath;
-  }
-
-  function closeLightbox() {
-    if (!lightbox || !lightbox.hasAttribute("open")) return;
-    if (typeof lightbox.close === "function") lightbox.close();
-    else lightbox.removeAttribute("open");
-  }
-
-  function previousImage() { moveLightbox(-1); }
-  function nextImage() { moveLightbox(1); }
-  function closeLightboxBackdrop(event) {
-    if (event.target === lightbox) closeLightbox();
-  }
-  function lightboxKeyboard(event) {
-    if (event.key === "ArrowLeft") moveLightbox(-1);
-    if (event.key === "ArrowRight") moveLightbox(1);
-  }
-
-  prevButton.addEventListener("click", previousPage);
-  nextButton.addEventListener("click", nextPage);
-  window.addEventListener("popstate", onPopState);
-
-  if (lightbox) {
-    lightbox.querySelector("[data-lightbox-close]").addEventListener("click", closeLightbox);
-    lightbox.querySelector("[data-lightbox-prev]").addEventListener("click", previousImage);
-    lightbox.querySelector("[data-lightbox-next]").addEventListener("click", nextImage);
-    lightbox.addEventListener("click", closeLightboxBackdrop);
-    lightbox.addEventListener("keydown", lightboxKeyboard);
-  }
-
-  active = {
-    handlesPopState: handlesCurrentPopState,
-    unmount: function () {
-      if (!mounted) return;
-      mounted = false;
-      requestId += 1;
-      if (controller) controller.abort();
-      if (countController) countController.abort();
-      window.removeEventListener("popstate", onPopState);
-      prevButton.removeEventListener("click", previousPage);
-      nextButton.removeEventListener("click", nextPage);
-      closeLightbox();
-      active = null;
-    }
-  };
-
-  countMemos();
-  loadPage(currentPage, false);
-  }
-
-  window.NebulaMemos = {
-    mount: mount,
-    unmount: unmount,
-    handlesPopState: handlesPopState
-  };
+  window.NebulaMemos = { mount: mount, unmount: unmount };
 })();

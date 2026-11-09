@@ -35,13 +35,6 @@ function themeConfig($form)
             _t('每行一条：名称|链接|描述|头像地址，头像地址可省略。')
         ),
         new \Typecho\Widget\Helper\Form\Element\Text(
-            'memosEndpoint',
-            null,
-            '/api/v1/memos',
-            _t('说说接口地址'),
-            _t('说说页面读取的 Memos 接口，可填写站内路径或完整的 https 地址；留空使用 /api/v1/memos。')
-        ),
-        new \Typecho\Widget\Helper\Form\Element\Text(
             'footerText',
             null,
             null,
@@ -497,6 +490,182 @@ function nebula_post_summary($archive)
     }
 
     return trim((string) $archive->fields->summary);
+}
+
+function nebula_memo_url($value)
+{
+    if (!is_string($value)) return '';
+    $url = trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    if ($url === '' || preg_match('/[\x00-\x20\x7f\\\\]/', $url)) return '';
+
+    $siteUrl = (string) \Widget\Options::alloc()->siteUrl;
+    if (strpos($url, '//') === 0) {
+        $url = (parse_url($siteUrl, PHP_URL_SCHEME) ?: 'https') . ':' . $url;
+    } elseif (!preg_match('/^[a-z][a-z0-9+.-]*:/i', $url)) {
+        if ($url[0] === '/') {
+            $site = parse_url($siteUrl);
+            $origin = ($site['scheme'] ?? 'https') . '://' . ($site['host'] ?? '')
+                . (isset($site['port']) ? ':' . $site['port'] : '');
+            $url = \Typecho\Common::url($url, $origin);
+        } else {
+            $url = \Typecho\Common::url($url, $siteUrl);
+        }
+    }
+
+    return preg_match('#^https?://#i', $url) && filter_var($url, FILTER_VALIDATE_URL) ? $url : '';
+}
+
+function nebula_memo_content($content)
+{
+    $content = (string) $content;
+    $escape = static fn($value) => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    if (!class_exists('DOMDocument')) {
+        return nl2br($escape(strip_tags($content)), false);
+    }
+
+    $document = new \DOMDocument('1.0', 'UTF-8');
+    $previousErrors = libxml_use_internal_errors(true);
+    try {
+        $loaded = $document->loadHTML(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' . $content . '</body></html>',
+            LIBXML_NONET
+        );
+    } finally {
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrors);
+    }
+    if (!$loaded) return $escape(strip_tags($content));
+
+    $allowed = explode(' ', 'p br strong b em i a ul ol li blockquote code pre del s mark');
+    $discarded = explode(' ', 'script style iframe object embed form input button svg math template');
+    $render = static function ($node, $linkify = true) use (&$render, $allowed, $discarded, $escape) {
+        if ($node instanceof \DOMText) {
+            if (!$linkify) return $escape($node->nodeValue);
+            $parts = preg_split('~(https?://[^\s<>"\'「」『』“”]+)~u', $node->nodeValue, -1, PREG_SPLIT_DELIM_CAPTURE);
+            $html = '';
+            foreach ($parts ?: [] as $index => $part) {
+                if ($index % 2 === 0) {
+                    $html .= $escape($part);
+                    continue;
+                }
+                $url = preg_replace('/[.,!?;:，。！？；：)\]}>）】》]+$/u', '', $part);
+                $href = nebula_memo_url($url);
+                $html .= $href !== ''
+                    ? '<a href="' . $escape($href) . '" target="_blank" rel="noopener noreferrer nofollow" data-no-swup>'
+                        . $escape($url) . '</a>' . $escape(substr($part, strlen($url)))
+                    : $escape($part);
+            }
+            return $html;
+        }
+        if (!($node instanceof \DOMElement)) return '';
+        $tag = strtolower($node->tagName);
+        if (in_array($tag, $discarded, true)) return '';
+
+        $html = '';
+        foreach ($node->childNodes as $child) {
+            $html .= $render($child, $linkify && !in_array($tag, ['a', 'code', 'pre'], true));
+        }
+        if (!in_array($tag, $allowed, true)) return $html;
+        if ($tag === 'a') {
+            $href = nebula_memo_url($node->getAttribute('href'));
+            return $href !== ''
+                ? '<a href="' . $escape($href) . '" target="_blank" rel="noopener noreferrer nofollow" data-no-swup>' . $html . '</a>'
+                : $html;
+        }
+        return $tag === 'br' ? '<br>' : '<' . $tag . '>' . $html . '</' . $tag . '>';
+    };
+
+    $html = '';
+    foreach ($document->getElementsByTagName('body')->item(0)->childNodes as $node) {
+        $html .= $render($node);
+    }
+    return $html;
+}
+
+function nebula_memos($pageSize = 20, $page = 1)
+{
+    $pageSize = max(1, min(100, (int) $pageSize));
+    $page = is_scalar($page) ? max(1, (int) $page) : 1;
+    $result = ['available' => false, 'error' => false, 'items' => [], 'total' => 0, 'page' => 1, 'pages' => 0, 'pageSize' => $pageSize];
+
+    try {
+        $database = \Typecho\Db::get();
+        $count = $database->fetchRow(
+            $database->select('COUNT(*) AS total')->from('table.moments')
+                ->where('(table.moments.status = ? OR table.moments.status IS NULL OR table.moments.status = ?)', 'public', '')
+        );
+        $result['available'] = true;
+        $result['total'] = (int) ($count['total'] ?? 0);
+        $result['pages'] = (int) ceil($result['total'] / $pageSize);
+        $result['page'] = min($page, max(1, $result['pages']));
+        $rows = $database->fetchAll(
+            $database->select()->from('table.moments')
+                ->where('(table.moments.status = ? OR table.moments.status IS NULL OR table.moments.status = ?)', 'public', '')
+                ->order('mid', \Typecho\Db::SORT_DESC)
+                ->page($result['page'], $pageSize)
+        );
+    } catch (\Throwable $error) {
+        // Missing plugin tables are an installation state; other query errors stay distinct.
+        $result['error'] = !preg_match('/no such table|table .+doesn.t exist|relation .+does not exist/i', $error->getMessage());
+        return $result;
+    }
+
+    $sourceLabels = ['web' => 'Web端', 'mobile' => '手机端', 'api' => 'API', 'qq' => 'QQ', 'weixin' => '微信'];
+    foreach ($rows as $row) {
+        $tagsRaw = trim((string) ($row['tags'] ?? ''));
+        $tags = json_decode($tagsRaw, true);
+        $tags = is_array($tags) ? $tags : explode(',', $tagsRaw);
+        $validTags = [];
+        foreach ($tags as $tag) {
+            if (is_scalar($tag) && trim((string) $tag) !== '') $validTags[] = trim((string) $tag);
+        }
+        $media = [];
+        $mediaItems = json_decode((string) ($row['media'] ?? ''), true);
+        foreach (is_array($mediaItems) ? $mediaItems : [] as $item) {
+            if (!is_array($item)) continue;
+            $url = nebula_memo_url($item['url'] ?? '');
+            if ($url !== '') {
+                $media[] = ['type' => is_string($item['type'] ?? null) ? strtoupper($item['type']) : 'FILE', 'url' => $url];
+            }
+        }
+        $latitude = $row['latitude'] ?? '';
+        $longitude = $row['longitude'] ?? '';
+        $coordinatesValid = is_numeric($latitude) && is_numeric($longitude)
+            && abs((float) $latitude) <= 90 && abs((float) $longitude) <= 180;
+        $location = trim((string) ($row['location_address'] ?? ''));
+        $locationUrl = '';
+        if ($coordinatesValid) {
+            $latitude = sprintf('%.7F', (float) $latitude);
+            $longitude = sprintf('%.7F', (float) $longitude);
+            $locationUrl = 'https://www.openstreetmap.org/?mlat=' . $latitude . '&mlon=' . $longitude
+                . '#map=14/' . $latitude . '/' . $longitude;
+            if ($location === '') $location = sprintf('%.4F, %.4F', (float) $latitude, (float) $longitude);
+        }
+        $source = trim((string) ($row['source'] ?? 'web'));
+        $result['items'][] = [
+            'mid' => (int) $row['mid'],
+            'content' => nebula_memo_content($row['content'] ?? ''),
+            'created' => max(0, (int) ($row['created'] ?? 0)),
+            'tags' => $validTags,
+            'media' => $media,
+            'source' => $sourceLabels[strtolower($source)] ?? ($source ?: $sourceLabels['web']),
+            'location' => $location,
+            'location_url' => $locationUrl,
+        ];
+    }
+
+    return $result;
+}
+
+function nebula_memos_page_url($permalink, $page)
+{
+    $url = parse_url((string) $permalink);
+    $params = [];
+    parse_str($url['query'] ?? '', $params);
+    $params['memo-page'] = max(1, (int) $page);
+    $base = explode('?', explode('#', (string) $permalink, 2)[0], 2)[0];
+
+    return $base . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 }
 
 function nebula_friend_link_application()
