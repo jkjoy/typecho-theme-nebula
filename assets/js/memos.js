@@ -143,8 +143,8 @@
   function timeParts(value) {
     var raw = typeof value === "string" ? value.trim() : "";
     var normalized = raw.replace(" ", "T");
-    // Treat timezone-less API timestamps as UTC before displaying Beijing time.
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)) normalized += "Z";
+    // The API returns Beijing time without an offset; preserve explicit timezones.
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)) normalized += "+08:00";
     var date = new Date(normalized);
     if (!raw || Number.isNaN(date.getTime())) {
       return { date: "此刻", clock: "", datetime: "", title: raw || "时间未知" };
